@@ -1,0 +1,24 @@
+{
+  "contract": "partner.search.v1",
+  "owner": "wca",
+  "mode": "read",
+  "request": {
+    "search": "string?",
+    "country": "string?",
+    "page": "number?",
+    "limit": "number?"
+  },
+  "response": {
+    "items": "WcaPartner[]",
+    "total": "number",
+    "page": "number",
+    "provenance": "Provenance"
+  },
+  "excludes": [
+    "lead_status",
+    "favorites",
+    "interactions",
+    "tasks",
+    "research_enrichment"
+  ]
+}
