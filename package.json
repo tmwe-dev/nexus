@@ -1,0 +1,7 @@
+{
+  "name": "tmwe-nexus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TMWE Nexus federation layer",
+  "engines": { "node": ">=20" }
+}
