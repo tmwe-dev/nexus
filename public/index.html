@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TMWE Nexus</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f5f7fb}body{margin:0}.wrap{max-width:1100px;margin:0 auto;padding:32px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:end}.muted{color:#667085}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:24px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 3px 12px rgba(16,24,40,.04)}.badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#eef2ff;font-size:12px}.status{font-weight:700}.ok{color:#067647}.planned{color:#b54708}code{font-size:12px}.topline{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#475467}</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="hero">
+      <div><div class="topline">Transport Management</div><h1>TMWE Nexus</h1><p class="muted">Independent applications. Shared contracts. Connected data. Cobra orchestration.</p></div>
+      <div id="health" class="badge">checking health…</div>
+    </div>
+    <h2>Connections</h2>
+    <div id="connections" class="grid"></div>
+  </main>
+  <script>
+    async function load(){
+      try{const h=await fetch('/api/health').then(r=>r.json());document.getElementById('health').textContent=`${h.status} · ${h.version}`;}catch{document.getElementById('health').textContent='health unavailable';}
+      try{
+        const data=await fetch('/api/connections').then(r=>r.json());
+        document.getElementById('connections').innerHTML=data.connections.map(c=>`<article class="card"><div class="badge">${c.kind}</div><h3>${c.name}</h3><div class="status ${c.status==='configured'?'ok':'planned'}">${c.status}</div><p class="muted">mode: ${c.mode || 'n/a'}</p><p>${c.capabilities.length ? c.capabilities.map(x=>`<code>${x}</code>`).join('<br>') : '<span class="muted">Capabilities not contracted yet</span>'}</p></article>`).join('');
+      }catch{document.getElementById('connections').innerHTML='<div class="card">Connections unavailable</div>';}
+    }
+    load();
+  </script>
+</body>
+</html>
