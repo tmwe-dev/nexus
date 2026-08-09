@@ -1,0 +1,25 @@
+{
+  "contract": "web.research.v1",
+  "owner": "cobra",
+  "mode": "read",
+  "request": {
+    "request_id": "string",
+    "query": "string",
+    "constraints": "object?",
+    "sources": "string[]?"
+  },
+  "response": {
+    "request_id": "string",
+    "status": "completed|partial|blocked|failed",
+    "findings": "object[]",
+    "evidence": "object[]",
+    "warnings": "string[]",
+    "usage": "object?"
+  },
+  "rules": [
+    "Research is executed by COBRA; there is no separate Firescrape service.",
+    "Evidence and provenance must be preserved.",
+    "Optional research failure must allow graceful degradation for callers.",
+    "Research findings do not overwrite authoritative source data automatically."
+  ]
+}
