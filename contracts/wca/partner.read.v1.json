@@ -1,0 +1,19 @@
+{
+  "contract": "partner.read.v1",
+  "owner": "wca",
+  "mode": "read",
+  "request": { "wca_id": "number" },
+  "response": {
+    "item": "WcaPartner",
+    "provenance": "Provenance"
+  },
+  "excludes": [
+    "lead_status",
+    "favorites",
+    "interactions",
+    "reminders",
+    "tasks",
+    "research_enrichment",
+    "crm_state"
+  ]
+}
