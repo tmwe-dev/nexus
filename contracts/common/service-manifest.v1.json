@@ -1,0 +1,15 @@
+{
+  "contract": "service-manifest.v1",
+  "required": ["service_id", "kind", "version", "capabilities"],
+  "fields": {
+    "service_id": "string",
+    "kind": "application|data-source|service",
+    "version": "semver",
+    "status": "string",
+    "mode": "string",
+    "source_of_truth": "boolean",
+    "capabilities": "string[]",
+    "health_capability": "string|null"
+  },
+  "rule": "Consumers depend on Nexus capabilities, not provider internals."
+}
