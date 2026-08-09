@@ -6,6 +6,7 @@ const CONNECTIONS = [
     status: 'configured',
     mode: 'read',
     sourceOfTruth: true,
+    repository: 'tmweapp/wca-app',
     endpointEnv: 'WCA_BASE_URL',
     tokenEnv: 'WCA_SERVICE_TOKEN',
     capabilities: [
@@ -28,14 +29,42 @@ const CONNECTIONS = [
     tokenEnv: 'REPORT_AZIENDE_SERVICE_TOKEN',
     capabilities: []
   },
-  { id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'planned', mode: 'read-write', capabilities: [] },
-  { id: 'bartalk', name: 'BarTalk', kind: 'application', status: 'planned', mode: 'session', capabilities: [] },
-  { id: 'scraper', name: 'Scraper', kind: 'service', status: 'planned', mode: 'read', capabilities: [] },
-  { id: 'research', name: 'Research', kind: 'service', status: 'planned', mode: 'read', capabilities: [] },
-  { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned', mode: 'read-write', capabilities: [] },
-  { id: 'cobra', name: 'Cobra', kind: 'service', status: 'planned', mode: 'orchestrate', capabilities: [] },
+  {
+    id: 'funnemail',
+    name: 'Funnemail',
+    kind: 'application',
+    status: 'source-reviewed-boundary-pending',
+    mode: 'read-write',
+    repository: 'tmwe-dev/funnemail',
+    capabilities: []
+  },
+  {
+    id: 'bartalk',
+    name: 'BarTalk / Voice Translator',
+    kind: 'application',
+    status: 'source-reviewed-boundary-pending',
+    mode: 'session',
+    repository: 'tmwe-dev/voice-translator2',
+    capabilities: []
+  },
+  {
+    id: 'cobra',
+    name: 'COBRA',
+    kind: 'service',
+    status: 'source-reviewed-contract-design',
+    mode: 'orchestrate',
+    repository: 'tmwe-dev/COBRA',
+    endpointEnv: 'COBRA_BASE_URL',
+    tokenEnv: 'COBRA_SERVICE_TOKEN',
+    capabilities: [
+      'workflow.execute.v1',
+      'web.research.v1',
+      'browser.execute.v1'
+    ]
+  },
+  { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
   { id: 'crm', name: 'CRM', kind: 'application', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
-  { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', capabilities: [] },
+  { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator', capabilities: [] },
   { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none', capabilities: [] }
 ];
 
