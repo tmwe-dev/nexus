@@ -1,0 +1,22 @@
+{
+  "contract": "contact.read.v1",
+  "owner": "wca",
+  "mode": "read",
+  "entity": {
+    "source": "wca",
+    "source_partner_id": "number",
+    "name": "string|null",
+    "title": "string|null",
+    "email": "string|null",
+    "phone": "string|null",
+    "mobile": "string|null",
+    "is_primary": "boolean|null"
+  },
+  "excludes": [
+    "crm_contact_id",
+    "lead_status",
+    "interactions",
+    "tasks",
+    "research_enrichment"
+  ]
+}
