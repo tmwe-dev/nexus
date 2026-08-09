@@ -1,0 +1,25 @@
+{
+  "contract": "workflow.execute.v1",
+  "owner": "cobra",
+  "mode": "command",
+  "request": {
+    "request_id": "string",
+    "instruction": "string",
+    "context": "object?",
+    "allowed_capabilities": "string[]?",
+    "max_runtime_ms": "number?"
+  },
+  "response": {
+    "request_id": "string",
+    "status": "accepted|running|completed|partial|blocked|failed",
+    "result": "object|null",
+    "warnings": "string[]",
+    "usage": "object?"
+  },
+  "rules": [
+    "Side effects require COBRA risk controls and confirmation policy.",
+    "Every execution is traceable by request_id.",
+    "COBRA must not silently persist domain data owned by another service.",
+    "Partial completion is valid and must be explicit."
+  ]
+}
