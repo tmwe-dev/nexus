@@ -1,0 +1,17 @@
+{
+  "contract": "business-card.search.v1",
+  "owner": "wca",
+  "mode": "read",
+  "response": {
+    "items": "WcaBusinessCard[]",
+    "total": "number",
+    "provenance": "Provenance"
+  },
+  "excludes": [
+    "crm_match_state",
+    "lead_status",
+    "message_history",
+    "calendar_events",
+    "workflow_state"
+  ]
+}
