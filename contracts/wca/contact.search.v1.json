@@ -1,0 +1,24 @@
+{
+  "contract": "contact.search.v1",
+  "owner": "wca",
+  "mode": "read",
+  "request": {
+    "wca_id": "number?",
+    "search": "string?",
+    "country": "string?",
+    "page": "number?",
+    "limit": "number?"
+  },
+  "response": {
+    "items": "WcaContact[]",
+    "total": "number",
+    "provenance": "Provenance"
+  },
+  "excludes": [
+    "crm_contact_id",
+    "lead_status",
+    "interactions",
+    "tasks",
+    "research_enrichment"
+  ]
+}
