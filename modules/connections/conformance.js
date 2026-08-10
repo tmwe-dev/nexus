@@ -2,7 +2,8 @@
 
 const REQUIRED = {
   FUNNEMAIL: ['email:read','email:send','email:sync'],
-  BARTALK: ['communication:session','communication:handoff']
+  BARTALK: ['communication:session','communication:handoff'],
+  TMWE2: ['tmwe2:read','tmwe2:sync']
 };
 
 function evaluate(service, probe, declaredCapabilities = []) {
