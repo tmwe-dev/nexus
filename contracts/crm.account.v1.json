@@ -1,0 +1,24 @@
+{
+  "contract": "crm.account.v1",
+  "owner": "crm",
+  "purpose": "Commercial relationship with a company identity. The CRM owns relationship state, not authoritative company master facts.",
+  "fields": {
+    "crm_account_id": "string",
+    "identity_company_id": "string?",
+    "display_name": "string",
+    "owner_id": "string?",
+    "lead_status": "string?",
+    "contacts_count": "number",
+    "interaction_count": "number",
+    "last_interaction_at": "ISO-8601?",
+    "lead_score": "number?",
+    "source_refs": "array",
+    "contact_refs": "array"
+  },
+  "rules": [
+    "CRM Account and Company Identity are separate concepts.",
+    "WCA, Report Aziende and other source facts remain source-owned.",
+    "A name-only grouping is a migration projection, never identity proof.",
+    "No source record is copied or modified by this contract."
+  ]
+}
