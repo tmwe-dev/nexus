@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"operations.deployment-sync.v1",
+  "type":"object",
+  "required":["contract","commit","branch","in_sync","source_of_truth","originals_modified"],
+  "properties":{
+    "contract":{"const":"operations.deployment-sync.v1"},
+    "commit":{"type":"string"},
+    "branch":{"type":"string"},
+    "deployment":{"type":["string","null"]},
+    "expected_release_sha":{"type":["string","null"]},
+    "in_sync":{"type":"boolean"},
+    "source_of_truth":{"const":"github:tmwe-dev/nexus:main"},
+    "originals_modified":{"const":false}
+  }
+}
