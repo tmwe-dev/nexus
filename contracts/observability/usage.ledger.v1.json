@@ -1,0 +1,12 @@
+{
+  "contract": "usage.ledger.v1",
+  "owner": "nexus-observability",
+  "purpose": "Track latency, usage units, provider metadata, external calls and attributable operational cost across Nexus capabilities.",
+  "rules": [
+    "Every external or metered capability should carry a correlation_id.",
+    "Usage entries contain operational metadata, not business payloads or source records.",
+    "Costs are explicit numeric amounts with currency and must never be inferred silently.",
+    "Unavailable pricing produces zero/unknown cost metadata rather than fabricated estimates.",
+    "Observability failure must never break the business capability being observed."
+  ]
+}
