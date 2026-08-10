@@ -1,0 +1,12 @@
+{
+  "contract": "crm.contact.detail.v1",
+  "owner": "crm",
+  "purpose": "Composite read model for one CRM contact without taking ownership of external source data.",
+  "sections": ["contact", "interactions", "business_card", "lead_score"],
+  "rules": [
+    "Read-only during migration.",
+    "Business-card data remains source-attributed.",
+    "Lead score declares its policy version.",
+    "Missing secondary capabilities degrade gracefully rather than failing the whole contact detail."
+  ]
+}
