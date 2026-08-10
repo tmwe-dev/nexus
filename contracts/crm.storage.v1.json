@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "crm.storage.v1",
+  "title": "Nexus CRM Independent Storage",
+  "type": "object",
+  "required": ["entity", "nexus_id", "source"],
+  "properties": {
+    "entity": { "enum": ["contacts", "accounts", "activities", "opportunities"] },
+    "nexus_id": { "type": "string", "minLength": 1 },
+    "legacy_id": { "type": ["string", "null"] },
+    "source": { "enum": ["nexus", "legacy_import", "wca", "manual", "system"] },
+    "payload": { "type": "object" },
+    "stored_at": { "type": "string" }
+  },
+  "additionalProperties": true
+}
