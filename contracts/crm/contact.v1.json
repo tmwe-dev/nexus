@@ -1,0 +1,25 @@
+{
+  "contract": "crm.contact.v1",
+  "owner": "crm",
+  "purpose": "CRM-owned relationship envelope linked to Nexus Identity, without duplicating source-owned company/contact facts.",
+  "fields": {
+    "crm_contact_id": "string",
+    "identity_contact_id": "string",
+    "identity_company_id": "string?",
+    "lead_status": "new|first_touch_sent|holding|engaged|qualified|negotiation|converted|archived|blacklisted",
+    "owner_id": "string?",
+    "status_reason": "string?",
+    "notes": "string?",
+    "tags": "string[]",
+    "interaction_count": "number",
+    "last_interaction_at": "ISO-8601?",
+    "converted_at": "ISO-8601?",
+    "source_refs": "array"
+  },
+  "rules": [
+    "Company and person master facts are resolved through Nexus Identity/source capabilities.",
+    "CRM owns commercial relationship state only.",
+    "Message bodies and translated communication content are never copied into this contract.",
+    "Original source identifiers are preserved in source_refs."
+  ]
+}
