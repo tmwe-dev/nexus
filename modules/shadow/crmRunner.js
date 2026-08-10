@@ -6,6 +6,7 @@ const { searchAccounts } = require('../crm/accounts/service');
 const { readPipeline } = require('../crm/pipeline/service');
 const { readContactInteractions } = require('../crm/interactions/service');
 const { compareResults } = require('../conformance/compare');
+const { recordEvidence } = require('../migration/evidenceRegistry');
 
 function stripIdentity(item) {
   const copy = { ...item };
@@ -44,11 +45,7 @@ async function runContactsShadow(filters = {}) {
   const candidate = await searchContacts(filters);
   const reference = legacy.rows.map(mapLegacyContact);
   const candidateItems = candidate.items.map(stripIdentity);
-  return {
-    capability: 'crm.contact.search.v1',
-    sample_size: legacy.rows.length,
-    comparison: compareResults(reference, candidateItems, { ignore_fields: ['identity'] })
-  };
+  return { capability: 'crm.contact.search.v1', sample_size: legacy.rows.length, comparison: compareResults(reference, candidateItems, { ignore_fields: ['identity'] }) };
 }
 
 async function runAccountsShadow(filters = {}) {
@@ -75,6 +72,18 @@ async function runActivitiesShadow(contactId, limit = 100) {
   };
 }
 
+function persistShadowEvidence(result) {
+  if (!result?.capability || !result?.comparison) return null;
+  return recordEvidence({
+    capability: result.capability,
+    kind: 'shadow',
+    accepted: result.comparison.status === 'match',
+    source: 'navigator-read-only-vs-nexus',
+    basis: result.comparison.basis || result.comparison.status,
+    sample_size: result.sample_size || 0
+  });
+}
+
 async function runCrmShadow(options = {}) {
   const filters = options.filters || {};
   const results = [];
@@ -85,6 +94,8 @@ async function runCrmShadow(options = {}) {
   }
   try { results.push(await runActivitiesShadow(options.contact_id, options.activity_limit)); }
   catch (error) { results.push({ capability: 'crm.activity.search.v1', status: 'failed', error: error.message }); }
+
+  const evidence = results.map(persistShadowEvidence).filter(Boolean);
   const comparable = results.filter(item => item.comparison);
   const matches = comparable.filter(item => item.comparison.status === 'match').length;
   return {
@@ -96,6 +107,7 @@ async function runCrmShadow(options = {}) {
     matched_checks: matches,
     acceptance_ratio: comparable.length ? matches / comparable.length : 0,
     accepted: comparable.length > 0 && matches === comparable.length,
+    evidence_recorded: evidence,
     results
   };
 }
