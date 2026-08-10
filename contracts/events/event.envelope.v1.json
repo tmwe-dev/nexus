@@ -1,0 +1,14 @@
+{
+  "contract": "event.envelope.v1",
+  "owner": "nexus-events",
+  "purpose": "Provide a stable envelope for versioned cross-module events.",
+  "required": ["event_id", "event_type", "occurred_at", "producer", "payload"],
+  "optional": ["subject", "correlation_id", "causation_id"],
+  "rules": [
+    "event_type includes semantic major version, for example crm.account.stage.changed.v1.",
+    "Published event types are immutable.",
+    "Breaking payload changes require a new major event version.",
+    "Events carry references, not copied source datasets.",
+    "Consumers must remain able to ignore unknown optional fields."
+  ]
+}
