@@ -18,16 +18,25 @@ function deploymentReadiness() {
   };
   controlPlane.ready = controlPlane.endpoint_configured && controlPlane.key_configured;
 
+  const authMode = String(process.env.NEXUS_AUTH_MODE || 'audit').toLowerCase();
+  const auth = {
+    mode: ['off','audit','enforce'].includes(authMode) ? authMode : 'audit',
+    registry_configured: Boolean(process.env.NEXUS_SERVICE_TOKEN_REGISTRY)
+  };
+  auth.production_ready = auth.mode === 'enforce' && auth.registry_configured;
+
   return {
-    contract: 'deployment.readiness.v2',
+    contract: 'deployment.readiness.v3',
     runtime: 'nodejs20.x',
     runtime_env: requiredRuntime.map(name => ({ name, configured: Boolean(process.env[name]) })),
     connections: optionalConnections,
     control_plane: controlPlane,
+    service_auth: auth,
     deployable: blockers.length === 0,
     production_cutover_evidence_ready: controlPlane.ready,
+    production_service_auth_ready: auth.production_ready,
     blockers: blockers.map(item => ({ id: item.id, endpoint_configured: item.endpoint_configured, token_configured: item.token_configured })),
-    note: 'Nexus may deploy without the control plane during extraction, but production legacy cutover requires durable migration evidence. Readiness exposes presence only and never returns secret values.'
+    note: 'Nexus may deploy during extraction with auth in audit mode. Production cutover requires durable evidence plus service auth in enforce mode. Secret values are never returned.'
   };
 }
 
