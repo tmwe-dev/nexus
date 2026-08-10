@@ -9,6 +9,10 @@ const CONNECTIONS = [
     endpointEnv: 'REPORT_AZIENDE_BASE_URL', tokenEnv: 'REPORT_AZIENDE_SERVICE_TOKEN', capabilities: []
   },
   {
+    id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false,
+    capabilities: ['identity.company.resolve.v1','identity.company.read.v1','identity.contact.resolve.v1','identity.contact.read.v1']
+  },
+  {
     id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'source-mapped-contract-design', mode: 'read-write',
     repository: 'tmwe-dev/funnemail', endpointEnv: 'FUNNEMAIL_BASE_URL', tokenEnv: 'FUNNEMAIL_SERVICE_TOKEN',
     capabilities: ['email.message.search.v1','email.message.read.v1','email.draft.create.v1','email.send.v1','email.sync.v1','email.classify.v1']
@@ -24,7 +28,11 @@ const CONNECTIONS = [
     capabilities: ['workflow.execute.v1','web.research.v1','browser.execute.v1']
   },
   { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
-  { id: 'crm', name: 'CRM', kind: 'application', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
+  {
+    id: 'crm', name: 'CRM', kind: 'application', status: 'read-only-source-mapping', mode: 'planned-independent-service', sourceOfTruth: true,
+    repository: 'tmwe-dev/wca-network-navigator',
+    capabilities: ['crm.company.search.v1','crm.company.read.v1','crm.contact.search.v1','crm.contact.read.v1','crm.contact.status.update.v1','crm.pipeline.search.v1','crm.opportunity.read.v1','crm.activity.search.v1']
+  },
   { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator', capabilities: [] },
   { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none', capabilities: [] }
 ];
