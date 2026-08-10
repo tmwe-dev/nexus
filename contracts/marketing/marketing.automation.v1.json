@@ -1,0 +1,14 @@
+{
+  "contract": "marketing.automation.v1",
+  "owner": "marketing-automation",
+  "purpose": "Select audiences and plan cadence-compliant outreach without taking ownership of message delivery or CRM state.",
+  "rules": [
+    "CRM owns commercial state.",
+    "Sales Intelligence supplies advisory ranking signals.",
+    "Funnemail owns email composition/delivery execution.",
+    "COBRA owns complex orchestration across services.",
+    "Campaign planning is dry-run until an explicit execution capability is separately approved.",
+    "Archived and blacklisted records are excluded from automatic outreach.",
+    "No original source application is modified during migration."
+  ]
+}
