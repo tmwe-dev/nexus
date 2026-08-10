@@ -1,6 +1,6 @@
 'use strict';
 
-const memory = { contacts: new Map(), accounts: new Map(), activities: new Map(), opportunities: new Map() };
+const memory = { contacts: new Map(), accounts: new Map(), activities: new Map(), opportunities: new Map(), companies: new Map() };
 
 function table(name) {
   if (!memory[name]) throw new Error(`unsupported_crm_store:${name}`);
