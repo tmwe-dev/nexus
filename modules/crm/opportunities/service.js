@@ -1,4 +1,5 @@
 const { searchAccounts } = require('../accounts/service');
+const { instrumentCapability } = require('../../observability/instrumentCapability');
 
 const OPPORTUNITY_STAGES = new Set(['qualified','negotiation','converted']);
 
@@ -22,15 +23,17 @@ function projectOpportunity(account) {
 }
 
 async function searchOpportunities(filters = {}) {
-  const accounts = await searchAccounts(filters);
-  const items = accounts.items.map(projectOpportunity).filter(Boolean);
-  return {
-    contract: 'crm.opportunity.search.v1',
-    source_mode: accounts.source_mode,
-    items,
-    partial: accounts.partial,
-    rule: 'During migration, opportunities are read-only projections of qualified/negotiation/converted CRM accounts.'
-  };
+  return instrumentCapability('crm.opportunity.search.v1', 'crm', async () => {
+    const accounts = await searchAccounts(filters);
+    const items = accounts.items.map(projectOpportunity).filter(Boolean);
+    return {
+      contract: 'crm.opportunity.search.v1',
+      source_mode: accounts.source_mode,
+      items,
+      partial: accounts.partial,
+      rule: 'During migration, opportunities are read-only projections of qualified/negotiation/converted CRM accounts.'
+    };
+  }, { external_calls: 1, operation: 'searchOpportunities' });
 }
 
 module.exports = { OPPORTUNITY_STAGES, projectOpportunity, searchOpportunities };
