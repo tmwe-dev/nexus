@@ -1,0 +1,18 @@
+{
+  "contract": "shadow.crm.run.v1",
+  "owner": "nexus-migration",
+  "source": "navigator-read-only",
+  "candidate": "nexus",
+  "purpose": "Compare deterministic CRM projections against their legacy Navigator source without mutating either system.",
+  "acceptance": {
+    "required": "all comparable checks must match",
+    "skipped_checks": "do not count as accepted evidence",
+    "failed_checks": "block shadow acceptance"
+  },
+  "rules": [
+    "No source writes.",
+    "No automatic migration readiness mutation.",
+    "Identity-only Nexus metadata may be excluded from equivalence checks.",
+    "Shadow evidence must be rerun against the deployed environment before cutover."
+  ]
+}
