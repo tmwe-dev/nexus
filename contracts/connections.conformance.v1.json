@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"connections.conformance.v1",
+  "type":"object",
+  "required":["contract","score","conformant","services","originals_modified"],
+  "properties":{
+    "contract":{"const":"connections.conformance.v1"},
+    "score":{"type":"integer","minimum":0,"maximum":100},
+    "conformant":{"type":"boolean"},
+    "services":{"type":"array"},
+    "originals_modified":{"const":false}
+  }
+}
