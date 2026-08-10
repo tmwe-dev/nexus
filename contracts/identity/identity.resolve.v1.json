@@ -1,0 +1,12 @@
+{
+  "contract": "identity.resolve.v1",
+  "owner": "nexus-identity",
+  "purpose": "Resolve federated company/contact identity from source references and match evidence without taking ownership of source master data.",
+  "rules": [
+    "Every result includes provenance.",
+    "Every probabilistic result includes confidence and evidence.",
+    "Name-only company matches remain provisional or probable, never authoritative.",
+    "Original source identifiers are immutable references.",
+    "No resolver call writes to source systems."
+  ]
+}
