@@ -1,0 +1,12 @@
+{
+  "contract": "agent.framework.v1",
+  "owner": "agent-framework",
+  "purpose": "Execute bounded plans over registered capabilities with explicit side-effect and approval boundaries.",
+  "rules": [
+    "Tools declare owner, input/output contracts and side effects.",
+    "Side-effecting tools requiring approval cannot run without explicit approval.",
+    "Agent execution has a hard maximum step count.",
+    "Business services remain owners of their data and state.",
+    "COBRA is used when the task requires complex browser/research/multi-service orchestration."
+  ]
+}

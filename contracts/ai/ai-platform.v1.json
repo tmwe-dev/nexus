@@ -1,0 +1,12 @@
+{
+  "contract": "ai.platform.v1",
+  "owner": "ai-platform",
+  "purpose": "Provide provider-neutral model invocation and versioned prompt resolution without owning business workflow orchestration.",
+  "rules": [
+    "Applications call the AI Platform instead of invoking providers directly.",
+    "Prompt identity and version are explicit.",
+    "Model/provider selection is configuration, not business logic.",
+    "Provider failure returns a degraded result where the caller can continue without AI when possible.",
+    "COBRA owns complex multi-service workflow orchestration."
+  ]
+}
