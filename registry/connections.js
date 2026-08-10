@@ -29,9 +29,11 @@ const CONNECTIONS = [
   },
   { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
   {
-    id: 'crm', name: 'CRM', kind: 'application', status: 'read-only-source-mapping', mode: 'planned-independent-service', sourceOfTruth: true,
-    repository: 'tmwe-dev/wca-network-navigator',
-    capabilities: ['crm.company.search.v1','crm.company.read.v1','crm.contact.search.v1','crm.contact.read.v1','crm.contact.status.update.v1','crm.pipeline.search.v1','crm.opportunity.read.v1','crm.activity.search.v1']
+    id: 'crm', name: 'CRM', kind: 'application', status: 'contacts-read-extraction-active', mode: 'independent-read-adapter', sourceOfTruth: false,
+    repository: 'tmwe-dev/nexus',
+    endpointEnv: 'NAVIGATOR_SUPABASE_URL',
+    tokenEnv: 'NAVIGATOR_SUPABASE_KEY',
+    capabilities: ['crm.contact.search.v1','crm.contact.read.v1','crm.pipeline.search.v1','crm.activity.search.v1']
   },
   { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator', capabilities: [] },
   { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none', capabilities: [] }
