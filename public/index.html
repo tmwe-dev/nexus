@@ -1,30 +1,111 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TMWE Nexus</title>
+  <title>TMWE Nexus · System Map</title>
   <style>
-    :root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f5f7fb}body{margin:0}.wrap{max-width:1100px;margin:0 auto;padding:32px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:end}.muted{color:#667085}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:24px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;box-shadow:0 3px 12px rgba(16,24,40,.04)}.badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#eef2ff;font-size:12px}.status{font-weight:700}.ok{color:#067647}.planned{color:#b54708}code{font-size:12px}.topline{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#475467}</style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17202a;background:#f6f7f8;--green:#177245;--green-bg:#eaf6ef;--green-border:#a8d8bd;--gray:#667085;--gray-bg:#f0f2f4;--gray-border:#d5d9df;--ink:#17202a;--line:#e4e7ec;--white:#fff}
+    *{box-sizing:border-box}body{margin:0;background:#f6f7f8;color:var(--ink)}
+    .shell{max-width:1420px;margin:0 auto;padding:28px 28px 60px}.header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:26px}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#667085}.title{margin:5px 0 4px;font-size:34px;letter-spacing:-.03em}.subtitle{margin:0;color:#667085;font-size:15px}.health{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:9px 13px;border-radius:999px;font-size:13px;white-space:nowrap}.dot{width:9px;height:9px;border-radius:50%;background:#98a2b3}.dot.live{background:#22a06b}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:26px}.metric{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}.metric .n{font-size:27px;font-weight:800;line-height:1}.metric .l{font-size:12px;color:#667085;margin-top:6px}.metric.done .n{color:var(--green)}
+    .legend{display:flex;gap:18px;align-items:center;margin:4px 0 20px;color:#667085;font-size:13px}.legend span{display:flex;align-items:center;gap:7px}.legend i{width:11px;height:11px;border-radius:3px}.legend .g{background:var(--green)}.legend .x{background:#98a2b3}
+    .section{margin-top:28px}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:12px}.section h2{margin:0;font-size:19px}.section .desc{font-size:12px;color:#667085}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{position:relative;border-radius:14px;padding:15px;min-height:136px;border:1px solid;transition:.15s ease}.card:hover{transform:translateY(-1px)}.card.done{background:var(--green-bg);border-color:var(--green-border)}.card.todo{background:var(--gray-bg);border-color:var(--gray-border);color:#667085}.state{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 8px;margin-bottom:10px}.done .state{color:var(--green);background:#fff;border:1px solid var(--green-border)}.todo .state{color:#667085;background:#fff;border:1px solid var(--gray-border)}.card h3{font-size:15px;margin:0 0 7px}.card p{font-size:12px;line-height:1.45;margin:0;color:inherit}.card .meta{margin-top:10px;font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.8}.progress{height:5px;background:rgba(255,255,255,.8);border-radius:999px;margin-top:12px;overflow:hidden}.progress b{display:block;height:100%;background:var(--green)}.todo .progress b{background:#98a2b3}
+    .flow{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr;align-items:center;gap:8px;margin-top:12px}.flowbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}.flowbox strong{display:block;font-size:14px}.flowbox span{font-size:11px;color:#667085}.arrow{text-align:center;color:#98a2b3;font-size:24px}.footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:#98a2b3;font-size:11px}
+    @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.shell{padding:20px 16px 40px}.header{flex-direction:column}.grid{grid-template-columns:1fr}.summary{grid-template-columns:1fr 1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}
+  </style>
 </head>
 <body>
-  <main class="wrap">
-    <div class="hero">
-      <div><div class="topline">Transport Management</div><h1>TMWE Nexus</h1><p class="muted">Independent applications. Shared contracts. Connected data. Cobra orchestration.</p></div>
-      <div id="health" class="badge">checking health…</div>
+  <main class="shell">
+    <header class="header">
+      <div><div class="eyebrow">Transport Management · Digital Business Engine</div><h1 class="title">TMWE Nexus</h1><p class="subtitle">Mappa viva dell'architettura: ciò che esiste è verde, ciò che manca resta grigio.</p></div>
+      <div class="health"><span id="healthDot" class="dot"></span><span id="healthText">Nexus online · verifica health…</span></div>
+    </header>
+
+    <div class="summary">
+      <div class="metric done"><div class="n" id="doneCount">0</div><div class="l">blocchi costruiti</div></div>
+      <div class="metric"><div class="n" id="todoCount">0</div><div class="l">blocchi ancora da completare</div></div>
+      <div class="metric done"><div class="n" id="percent">0%</div><div class="l">mappa architetturale implementata</div></div>
+      <div class="metric"><div class="n">10/10</div><div class="l">standard architetturale target</div></div>
     </div>
-    <h2>Connections</h2>
-    <div id="connections" class="grid"></div>
+
+    <div class="legend"><span><i class="g"></i>Costruito / disponibile in Nexus</span><span><i class="x"></i>Da costruire o completare</span></div>
+
+    <section class="section"><div class="section-head"><div><h2>1. Nexus Core</h2><div class="desc">Fondazioni comuni, senza duplicare i sistemi originali</div></div></div><div class="grid" id="core"></div></section>
+    <section class="section"><div class="section-head"><div><h2>2. Business Modules</h2><div class="desc">CRM, intelligence, marketing e ricerca</div></div></div><div class="grid" id="business"></div></section>
+    <section class="section"><div class="section-head"><div><h2>3. Connected Applications</h2><div class="desc">Sistemi indipendenti collegati tramite capability e contratti</div></div></div><div class="grid" id="connections"></div></section>
+    <section class="section"><div class="section-head"><div><h2>4. Safety & Operations</h2><div class="desc">Presidi necessari per arrivare al cutover senza disastri</div></div></div><div class="grid" id="safety"></div></section>
+    <section class="section"><div class="section-head"><div><h2>5. Next Build</h2><div class="desc">Ordine di sviluppo successivo</div></div></div><div class="grid" id="next"></div></section>
+
+    <section class="section"><div class="section-head"><div><h2>Architettura operativa</h2><div class="desc">Nexus coordina e normalizza; le fonti restano indipendenti</div></div></div>
+      <div class="flow"><div class="flowbox"><strong>Sources & Apps</strong><span>WCA · Funnemail · BarTalk · COBRA</span></div><div class="arrow">→</div><div class="flowbox"><strong>TMWE Nexus</strong><span>Contracts · Identity · CRM · Events · Safety</span></div><div class="arrow">→</div><div class="flowbox"><strong>Business Experience</strong><span>Operator UI · Sales · Automation · TMWE2 final</span></div></div>
+    </section>
+
+    <footer class="footer"><span>Original systems remain read-only during extraction and migration.</span><span id="buildStamp">Nexus system map</span></footer>
   </main>
-  <script>
-    async function load(){
-      try{const h=await fetch('/api/health').then(r=>r.json());document.getElementById('health').textContent=`${h.status} · ${h.version}`;}catch{document.getElementById('health').textContent='health unavailable';}
-      try{
-        const data=await fetch('/api/connections').then(r=>r.json());
-        document.getElementById('connections').innerHTML=data.connections.map(c=>`<article class="card"><div class="badge">${c.kind}</div><h3>${c.name}</h3><div class="status ${c.status==='configured'?'ok':'planned'}">${c.status}</div><p class="muted">mode: ${c.mode || 'n/a'}</p><p>${c.capabilities.length ? c.capabilities.map(x=>`<code>${x}</code>`).join('<br>') : '<span class="muted">Capabilities not contracted yet</span>'}</p></article>`).join('');
-      }catch{document.getElementById('connections').innerHTML='<div class="card">Connections unavailable</div>';}
-    }
-    load();
-  </script>
-</body>
-</html>
+<script>
+const groups={
+ core:[
+  ['Identity Federation','Company/contact resolver con confidence e provenance.',1,'identity.resolve.v1'],
+  ['Contract Registry','Contratti versionati per capability e servizi.',1,'contracts v1'],
+  ['Event Schemas Registry','Event envelope e semantic versioning.',1,'event.envelope.v1'],
+  ['Connections Control Plane','Stato, capability, scopes e confini per ogni servizio.',1,'connections.control-plane.v1'],
+  ['AI Platform','Model gateway + prompt registry.',1,'ai-platform.v1'],
+  ['Agent Framework','Tool registry + executor bounded.',1,'agent-framework.v1'],
+  ['Capability Enforcement','Blocca capability non dichiarate.',1,'capability enforcement'],
+  ['Independent Nexus Data Layer','Storage Nexus autonomo per dati proprietari.',0,'Phase 34']
+ ],
+ business:[
+  ['CRM Contacts','Contatti normalizzati con Identity linking.',1,'crm.contact.v1'],
+  ['CRM Accounts','Account distinti da Company.',1,'crm.account.v1'],
+  ['CRM Pipeline','Pipeline commerciale canonica.',1,'pipeline policy v1'],
+  ['CRM Activities','Interazioni e attività normalizzate.',1,'crm.activity.v1'],
+  ['CRM Opportunities','Opportunità commerciali.',1,'crm.opportunity.v1'],
+  ['Sales Intelligence','Signals, ranking e recommendation layer.',1,'sales.intelligence.v1'],
+  ['Marketing Automation','Audience, cadence, campaign planner dry-run.',1,'marketing.automation.v1'],
+  ['Research Engine','Nexus → COBRA con fallback/degradation.',1,'research.engine.v1'],
+  ['CRM Write Operations','Creazione/modifica dati su storage Nexus.',0,'after independent storage'],
+  ['Operator CRM UI','Pagine operative contacts/accounts/pipeline.',0,'UI build'],
+  ['Unified Search','Ricerca federata cross-system.',0,'planned'],
+  ['Workflow UI','Visualizzazione workflow e azioni orchestrate.',0,'planned']
+ ],
+ connections:[
+  ['WCA App','Partner, indirizzi, contatti e business cards; source of truth read-only.',1,'wca connector'],
+  ['COBRA','Research, browser automation e workflow complessi.',1,'compatibility connector'],
+  ['Funnemail Boundary','Capability map e confine applicativo definiti.',1,'email boundary'],
+  ['BarTalk Boundary','Capability map e confine session/translation definiti.',1,'communication boundary'],
+  ['Funnemail Live Connector','Read/send/sync reali tramite contratti Nexus.',0,'connection pending'],
+  ['BarTalk Live Connector','Sessioni e handoff reali collegati a Nexus.',0,'connection pending'],
+  ['Report Aziende','Anagrafiche societarie; da costruire dopo il core.',0,'deferred'],
+  ['TMWE2','Integrazione finale, volutamente esclusa ora.',0,'final phase']
+ ],
+ safety:[
+  ['Usage & Cost Ledger','Correlation ID, latency, usage e cost observability.',1,'usage.ledger.v1'],
+  ['Circuit Breakers','Closed/open/half-open + graceful degradation.',1,'resilience.policy.v1'],
+  ['Shadow Comparison','Confronto Nexus vs legacy senza scritture.',1,'shadow.crm.run.v1'],
+  ['Caller Inventory','Inventario dei consumer legacy.',1,'migration caller registry'],
+  ['Migration Gates','Readiness 0–100 e cutover solo a 100.',1,'migration gates'],
+  ['Rollback Policy','Legacy disponibile durante stabilizzazione.',1,'rollback policy'],
+  ['Service Auth','Bearer digest + least-privilege scopes.',1,'audit/enforce'],
+  ['Durable Evidence Adapter','Persistenza evidence pronta come adapter.',1,'control-plane adapter'],
+  ['Durable Evidence Runtime','Datastore production realmente configurato.',0,'env/config required'],
+  ['Production Auth Enforce','Passaggio audit → enforce con registry token.',0,'before cutover'],
+  ['Full API Conformance','Conformance completa su tutte le capability.',0,'ongoing'],
+  ['Production Cutover','Switch definitivo solo dopo evidence 100/100.',0,'future']
+ ],
+ next:[
+  ['CRM Independent Storage','Creare storage Nexus senza dipendere dal DB Navigator.',0,'NEXT'],
+  ['Dual Read / Shadow Read','Leggere Nexus + legacy e confrontare automaticamente.',0,'NEXT'],
+  ['Operational UI','Portare CRM e control plane in pagine realmente usabili.',0,'NEXT'],
+  ['Live Connectors','Attivare Funnemail e BarTalk senza accoppiamenti.',0,'NEXT'],
+  ['Report Aziende','Costruire l’anagrafica societaria solo dopo il core.',0,'LATER'],
+  ['TMWE2 Integration','Collegare TMWE2 per ultimo.',0,'FINAL']
+ ]
+};
+function card(item){const [name,desc,done,meta]=item;return `<article class="card ${done?'done':'todo'}"><div class="state">${done?'✓ costruito':'○ da costruire'}</div><h3>${name}</h3><p>${desc}</p><div class="meta">${meta}</div><div class="progress"><b style="width:${done?100:0}%"></b></div></article>`}
+Object.entries(groups).forEach(([id,items])=>document.getElementById(id).innerHTML=items.map(card).join(''));
+const all=Object.values(groups).flat(),done=all.filter(x=>x[2]).length,todo=all.length-done;document.getElementById('doneCount').textContent=done;document.getElementById('todoCount').textContent=todo;document.getElementById('percent').textContent=Math.round(done/all.length*100)+'%';
+(async()=>{try{const r=await fetch('/api/health',{cache:'no-store'});const h=await r.json();document.getElementById('healthDot').classList.add('live');document.getElementById('healthText').textContent=`Nexus ${h.status} · v${h.version}`;}catch(e){document.getElementById('healthText').textContent='Nexus UI online · health API non disponibile';}})();
+document.getElementById('buildStamp').textContent='Updated '+new Date().toLocaleString('it-IT');
+</script>
+</body></html>
