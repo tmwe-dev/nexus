@@ -6,15 +6,17 @@ const {evaluate,REQUIRED}=require('../../modules/connections/conformance');
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  const durable=store.durableConfig(); let crm=false;if(durable.enabled){try{await store.stats();crm=true}catch{}}
- const [fm,bt]=await Promise.all([probe('FUNNEMAIL'),probe('BARTALK')]);const f=evaluate('FUNNEMAIL',fm,REQUIRED.FUNNEMAIL),b=evaluate('BARTALK',bt,REQUIRED.BARTALK);
+ const [fm,bt,tm]=await Promise.all([probe('FUNNEMAIL'),probe('BARTALK'),probe('TMWE2')]);
+ const f=evaluate('FUNNEMAIL',fm,REQUIRED.FUNNEMAIL),b=evaluate('BARTALK',bt,REQUIRED.BARTALK),t=evaluate('TMWE2',tm,REQUIRED.TMWE2);
  const commit=process.env.VERCEL_GIT_COMMIT_SHA||process.env.NEXUS_RELEASE_SHA||'unknown',expected=process.env.NEXUS_EXPECTED_RELEASE_SHA||null;
  const items=[
- {id:'durable_crm',label:'Durable CRM Runtime',priority:1,ready:durable.enabled&&crm,action:durable.enabled?'Restore CRM datastore reachability':'Configure production CRM datastore'},
+ {id:'durable_crm',label:'Durable CRM Runtime',priority:1,ready:durable.enabled&&crm,action:durable.enabled?'Restore Nexus datastore reachability':'Configure NEXUS_CRM_STORE_URL + NEXUS_CRM_STORE_TOKEN'},
  {id:'token_registry',label:'Service Token Registry',priority:2,ready:Boolean(process.env.NEXUS_SERVICE_TOKEN_REGISTRY),action:'Configure least-privilege production service tokens'},
  {id:'auth_enforce',label:'Production Auth Enforce',priority:3,ready:authMode()==='enforce',action:'Set service auth to enforce after token registry validation'},
- {id:'funnemail',label:'Funnemail Live Connector',priority:4,ready:f.score===100,action:'Configure endpoint/auth and satisfy required capabilities'},
- {id:'bartalk',label:'BarTalk Live Connector',priority:5,ready:b.score===100,action:'Configure endpoint/auth and satisfy required capabilities'},
- {id:'deployment_sync',label:'Deployment Sync',priority:6,ready:Boolean(expected&&commit!=='unknown'&&commit.startsWith(expected)),action:'Deploy current main and set expected release SHA'}];
+ {id:'funnemail',label:'Funnemail Live Connector',priority:4,ready:f.score===100,action:'Configure NEXUS_FUNNEMAIL_URL/TOKEN and required capabilities'},
+ {id:'bartalk',label:'BarTalk Live Connector',priority:5,ready:b.score===100,action:'Configure NEXUS_BARTALK_URL/TOKEN and required capabilities'},
+ {id:'tmwe2',label:'TMWE2 Final Connector',priority:6,ready:t.score===100,action:'Configure NEXUS_TMWE2_URL/TOKEN and required capabilities'},
+ {id:'deployment_sync',label:'Deployment Sync',priority:7,ready:Boolean(expected&&commit!=='unknown'&&commit.startsWith(expected)),action:'Set NEXUS_EXPECTED_RELEASE_SHA to current production main SHA'}];
  const ready=items.filter(x=>x.ready).length,pending=items.filter(x=>!x.ready).sort((a,b)=>a.priority-b.priority);
- return res.status(200).json({contract:'operations.readiness-checklist.v2',ready,total:items.length,percent:Math.round(ready/items.length*100),next_action:pending[0]||null,items,originals_modified:false});
+ return res.status(200).json({contract:'operations.readiness-checklist.v3',ready,total:items.length,percent:Math.round(ready/items.length*100),next_action:pending[0]||null,items,connector_scores:{funnemail:f.score,bartalk:b.score,tmwe2:t.score},originals_modified:false});
 };
