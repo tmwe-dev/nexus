@@ -1,0 +1,12 @@
+{
+  "contract": "sales.intelligence.v1",
+  "owner": "sales-intelligence",
+  "purpose": "Rank CRM accounts and provide advisory next-action recommendations from normalized commercial signals.",
+  "rules": [
+    "Sales Intelligence is separate from CRM state ownership.",
+    "Scores and recommendations are advisory and must not mutate CRM automatically.",
+    "Every ranking exposes contributing signals.",
+    "External research may enrich ranking later but is never a hard dependency.",
+    "Source systems remain read-only during migration."
+  ]
+}
