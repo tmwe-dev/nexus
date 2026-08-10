@@ -1,0 +1,11 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"connections.live-status.v1",
+  "type":"object",
+  "required":["contract","services","originals_modified"],
+  "properties":{
+    "contract":{"const":"connections.live-status.v1"},
+    "services":{"type":"array","items":{"type":"object","required":["service","configured","reachable","capabilities"],"properties":{"service":{"type":"string"},"configured":{"type":"boolean"},"reachable":{"type":"boolean"},"capabilities":{"type":"array","items":{"type":"string"}}}}},
+    "originals_modified":{"const":false}
+  }
+}
