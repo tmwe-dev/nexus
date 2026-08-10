@@ -1,0 +1,20 @@
+{
+  "contract": "sales.lead-score.v1",
+  "owner": "crm-sales-intelligence",
+  "purpose": "Versioned lead scoring result independent from the legacy imported_contacts table.",
+  "fields": {
+    "crm_contact_id": "string",
+    "score": "number",
+    "max_score": 100,
+    "policy_version": "string",
+    "breakdown": "object",
+    "calculated_at": "ISO-8601",
+    "input_refs": "array"
+  },
+  "rules": [
+    "Every score must declare the policy version used.",
+    "Source facts remain source-owned and are referenced, not copied as authoritative CRM facts.",
+    "Recalculation must not silently rewrite the meaning of historical scores.",
+    "The scoring engine is a CRM/Sales Intelligence capability, not a generic AI responsibility."
+  ]
+}
