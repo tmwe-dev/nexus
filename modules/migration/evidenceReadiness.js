@@ -8,16 +8,18 @@ function evidenceReadiness(capability) {
   if (!mapped) return { contract: 'migration.evidence-readiness.v1', capability, found: false };
 
   const shadow = getEvidence(capability, 'shadow');
+  const observability = getEvidence(capability, 'observability');
   const callers = callerSummary(capability);
+  const callerInventoryComplete = !['discovery_required', 'mixed'].includes(callers.inventory_status);
   const evidenceInput = {
     capability,
     source: mapped.source,
     target: mapped.target,
     contract_compatible: mapped.contract_compatible === true,
     shadow_acceptable: shadow?.accepted === true,
-    callers_migrated: callers.total_known_callers > 0 && callers.active_callers === 0,
+    callers_migrated: callerInventoryComplete && callers.total_known_callers > 0 && callers.active_callers === 0,
     rollback_ready: mapped.rollback_ready === true,
-    observability_ready: mapped.observability_ready === true
+    observability_ready: observability?.accepted === true
   };
 
   return {
@@ -30,9 +32,9 @@ function evidenceReadiness(capability) {
       shadow: shadow || null,
       callers,
       rollback: evidenceInput.rollback_ready ? 'declared_reversible' : 'missing',
-      observability: evidenceInput.observability_ready ? 'instrumented' : 'missing'
+      observability: observability || null
     },
-    rule: 'No gate is promoted from inference alone; shadow requires accepted recorded evidence and caller migration requires a non-empty inventory with zero active callers.'
+    rule: 'No gate is promoted from inference alone; shadow and observability require accepted recorded runtime evidence, while caller migration requires a verified inventory with zero active callers.'
   };
 }
 
