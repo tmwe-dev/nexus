@@ -1,0 +1,13 @@
+{
+  "contract": "research.engine.v1",
+  "owner": "research-engine",
+  "purpose": "Provide a clean research capability that delegates browser/research orchestration to COBRA without creating another scraper or taking ownership of source data.",
+  "rules": [
+    "COBRA is the sole owner of browser automation and complex external research execution.",
+    "Research requests are normalized and versioned before delegation.",
+    "Research results are advisory/enrichment outputs and do not mutate CRM or source systems.",
+    "CRM, WCA and Identity flows must degrade gracefully when research is unavailable.",
+    "No original application is modified during migration.",
+    "Report Aziende remains deferred and connection-only until its standalone build phase."
+  ]
+}
