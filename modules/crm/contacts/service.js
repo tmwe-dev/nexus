@@ -1,12 +1,13 @@
 const { listLegacyContacts, getLegacyContactById } = require('./legacyNavigatorAdapter');
 const { mapLegacyContact } = require('./mapper');
+const { linkContactIdentity } = require('../identity/linkContact');
 
 async function searchContacts(filters = {}) {
   const result = await listLegacyContacts(filters);
   return {
     contract: 'crm.contact.search.v1',
-    source_mode: 'navigator-read-adapter',
-    items: result.rows.map(mapLegacyContact),
+    source_mode: 'navigator-read-adapter+identity-resolver',
+    items: result.rows.map(mapLegacyContact).map(linkContactIdentity),
     page: {
       limit: result.limit,
       offset: result.offset,
@@ -24,8 +25,8 @@ async function readContact(id) {
   if (!row) return null;
   return {
     contract: 'crm.contact.read.v1',
-    source_mode: 'navigator-read-adapter',
-    contact: mapLegacyContact(row)
+    source_mode: 'navigator-read-adapter+identity-resolver',
+    contact: linkContactIdentity(mapLegacyContact(row))
   };
 }
 

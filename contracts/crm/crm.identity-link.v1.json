@@ -1,0 +1,12 @@
+{
+  "contract": "crm.identity-link.v1",
+  "owner": "crm+nexus-identity",
+  "purpose": "Attach federated company/contact identity to CRM read models without changing source ownership.",
+  "rules": [
+    "CRM keeps its own contact/account identifiers for commercial continuity.",
+    "identity_contact_id and identity_company_id are federation references, not replacements for source IDs.",
+    "Resolved identity may be used for cross-service joins.",
+    "Provisional identity remains explicitly marked and reviewable.",
+    "No resolver call writes to Navigator, WCA or any other source system."
+  ]
+}
