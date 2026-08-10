@@ -1,4 +1,5 @@
 const { listInteractionsByLegacyContactId } = require('./legacyNavigatorAdapter');
+const { instrumentCapability } = require('../../observability/instrumentCapability');
 
 function mapInteraction(row) {
   return {
@@ -15,14 +16,16 @@ function mapInteraction(row) {
 }
 
 async function readContactInteractions(crmContactId, limit) {
-  const sourceId = String(crmContactId || '').replace(/^navigator:/, '');
-  if (!sourceId) throw new Error('Contact id required');
-  const rows = await listInteractionsByLegacyContactId(sourceId, limit);
-  return {
-    contract: 'crm.activity.search.v1',
-    source_mode: 'navigator-read-adapter',
-    items: rows.map(mapInteraction)
-  };
+  return instrumentCapability('crm.activity.search.v1', 'crm', async () => {
+    const sourceId = String(crmContactId || '').replace(/^navigator:/, '');
+    if (!sourceId) throw new Error('Contact id required');
+    const rows = await listInteractionsByLegacyContactId(sourceId, limit);
+    return {
+      contract: 'crm.activity.search.v1',
+      source_mode: 'navigator-read-adapter',
+      items: rows.map(mapInteraction)
+    };
+  }, { external_calls: 1, operation: 'readContactInteractions' });
 }
 
 module.exports = { readContactInteractions };
