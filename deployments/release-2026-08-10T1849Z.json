@@ -1,0 +1,6 @@
+{
+  "release": "2026-08-10T18:49:00+02:00",
+  "reason": "force Vercel production deployment after Git connection",
+  "home_must_match_main": true,
+  "source": "tmwe-dev/nexus:main"
+}
