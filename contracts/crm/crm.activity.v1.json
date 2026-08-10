@@ -1,0 +1,11 @@
+{
+  "contract": "crm.activity.v1",
+  "owner": "crm",
+  "purpose": "Normalized commercial activity timeline item independent from source-specific interaction storage.",
+  "rules": [
+    "Activities remain source-attributed during migration.",
+    "Read models do not write back to Navigator.",
+    "Email/message bodies remain owned by their communication service.",
+    "CRM stores commercial activity semantics, not duplicated external content."
+  ]
+}

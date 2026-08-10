@@ -1,0 +1,11 @@
+{
+  "contract": "crm.opportunity.v1",
+  "owner": "crm",
+  "purpose": "Commercial opportunity linked to a CRM account and federated company identity.",
+  "rules": [
+    "Qualified, negotiation and converted stages may project opportunities during migration.",
+    "Opportunity state is CRM-owned; company facts remain source-owned.",
+    "Migration projections are read-only and explicitly marked.",
+    "No opportunity projection modifies Navigator or any source database."
+  ]
+}
