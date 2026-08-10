@@ -1,0 +1,13 @@
+{
+  "contract": "resilience.policy.v1",
+  "owner": "nexus-resilience",
+  "purpose": "Define predictable failure handling and graceful degradation across independent Nexus services.",
+  "rules": [
+    "External service failures must not cascade into unrelated business modules.",
+    "Circuit breakers open only after a configured failure threshold.",
+    "Open circuits recover through a half-open probe after the reset timeout.",
+    "Each service has an explicit fallback behavior.",
+    "Fallback results must be marked partial or degraded rather than presented as complete.",
+    "Source systems are never mutated by resilience logic."
+  ]
+}
