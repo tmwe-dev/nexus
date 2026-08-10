@@ -10,14 +10,13 @@ function evidenceReadiness(capability) {
   const shadow = getEvidence(capability, 'shadow');
   const observability = getEvidence(capability, 'observability');
   const callers = callerSummary(capability);
-  const callerInventoryComplete = !['discovery_required', 'mixed'].includes(callers.inventory_status);
   const evidenceInput = {
     capability,
     source: mapped.source,
     target: mapped.target,
     contract_compatible: mapped.contract_compatible === true,
     shadow_acceptable: shadow?.accepted === true,
-    callers_migrated: callerInventoryComplete && callers.total_known_callers > 0 && callers.active_callers === 0,
+    callers_migrated: callers.all_migrated === true,
     rollback_ready: mapped.rollback_ready === true,
     observability_ready: observability?.accepted === true
   };
@@ -34,7 +33,7 @@ function evidenceReadiness(capability) {
       rollback: evidenceInput.rollback_ready ? 'declared_reversible' : 'missing',
       observability: observability || null
     },
-    rule: 'No gate is promoted from inference alone; shadow and observability require accepted recorded runtime evidence, while caller migration requires a verified inventory with zero active callers.'
+    rule: 'No gate is promoted from inference alone; shadow and observability require accepted recorded runtime evidence, while caller migration requires a verified inventory with zero active callers or a verified derived capability with no direct legacy caller.'
   };
 }
 
