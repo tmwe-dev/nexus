@@ -33,10 +33,19 @@ const CONNECTIONS = [
     id: 'funnemail',
     name: 'Funnemail',
     kind: 'application',
-    status: 'source-reviewed-boundary-pending',
+    status: 'source-mapped-contract-design',
     mode: 'read-write',
     repository: 'tmwe-dev/funnemail',
-    capabilities: []
+    endpointEnv: 'FUNNEMAIL_BASE_URL',
+    tokenEnv: 'FUNNEMAIL_SERVICE_TOKEN',
+    capabilities: [
+      'email.message.search.v1',
+      'email.message.read.v1',
+      'email.draft.create.v1',
+      'email.send.v1',
+      'email.sync.v1',
+      'email.classify.v1'
+    ]
   },
   {
     id: 'bartalk',
@@ -51,7 +60,7 @@ const CONNECTIONS = [
     id: 'cobra',
     name: 'COBRA',
     kind: 'service',
-    status: 'source-reviewed-contract-design',
+    status: 'connector-ready-compatibility-mode',
     mode: 'orchestrate',
     repository: 'tmwe-dev/COBRA',
     endpointEnv: 'COBRA_BASE_URL',
