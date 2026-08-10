@@ -1,0 +1,27 @@
+{
+  "contract": "identity.contact.v1",
+  "owner": "nexus-identity",
+  "purpose": "Cross-system person/contact identity envelope linked to source-owned records.",
+  "fields": {
+    "entity_id": "string",
+    "company_entity_id": "string?",
+    "display_name": "string",
+    "given_name": "string?",
+    "family_name": "string?",
+    "emails": "string[]",
+    "phones": "string[]",
+    "roles": "string[]",
+    "source_refs": "array",
+    "match": {
+      "status": "exact|probable|possible|unresolved|conflict",
+      "confidence": "number",
+      "matched_on": "string[]"
+    }
+  },
+  "rules": [
+    "Email and phone normalization may support matching but never erase source values.",
+    "A contact may belong to multiple source systems while retaining one Nexus federation identity.",
+    "Company affiliation is versioned/attributed because people can change company or role.",
+    "No message content is stored in the identity layer."
+  ]
+}

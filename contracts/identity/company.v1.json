@@ -1,0 +1,27 @@
+{
+  "contract": "identity.company.v1",
+  "owner": "nexus-identity",
+  "purpose": "Canonical cross-system company identity envelope without replacing source-owned company data.",
+  "fields": {
+    "entity_id": "string",
+    "display_name": "string",
+    "normalized_name": "string?",
+    "country_code": "string?",
+    "city": "string?",
+    "website": "string?",
+    "vat_or_tax_id": "string?",
+    "source_refs": "array",
+    "match": {
+      "status": "exact|probable|possible|unresolved|conflict",
+      "confidence": "number",
+      "matched_on": "string[]"
+    }
+  },
+  "rules": [
+    "entity_id is a Nexus federation identifier, not a replacement for source IDs.",
+    "Every source-owned record keeps its original source_ref.",
+    "Conflicting facts remain attributed to their sources until resolved.",
+    "Nexus identity does not silently overwrite WCA, Report Aziende, CRM or research data.",
+    "Automatic merges require deterministic high-confidence identifiers; ambiguous matches stay separate."
+  ]
+}
