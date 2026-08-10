@@ -1,0 +1,11 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"crm.write.v1",
+  "type":"object",
+  "required":["entity","record"],
+  "properties":{
+    "entity":{"enum":["contacts","accounts","activities","opportunities"]},
+    "record":{"type":"object"}
+  },
+  "additionalProperties":false
+}
