@@ -9,7 +9,9 @@ function deploymentSync(){
   const commit=process.env.VERCEL_GIT_COMMIT_SHA||process.env.NEXUS_RELEASE_SHA||'unknown';
   const branch=process.env.VERCEL_GIT_COMMIT_REF||process.env.NEXUS_RELEASE_BRANCH||'unknown';
   const expected=process.env.NEXUS_EXPECTED_RELEASE_SHA||null;
-  return {commit,branch,expected,in_sync:Boolean(expected&&commit!=='unknown'&&commit.startsWith(expected))};
+  const gitLinkedMain=commit!=='unknown'&&branch==='main';
+  const pinnedMatch=Boolean(expected&&commit!=='unknown'&&commit.startsWith(expected));
+  return {commit,branch,expected,sync_mode:expected?'pinned_release':'git_linked_main',git_linked_main:gitLinkedMain,pinned_match:pinnedMatch,in_sync:expected?pinnedMatch:gitLinkedMain};
 }
 
 module.exports = async function handler(req,res){
@@ -39,5 +41,5 @@ module.exports = async function handler(req,res){
   if(migration.ready_to_deprecate!==migration.total_capabilities) blockers.push('migration_capabilities_blocked');
   if(!deployment.in_sync) blockers.push('deployment_not_synced_with_main');
   const productionReady=score===100&&blockers.length===0;
-  return res.status(200).json({contract:'operations.release-gate.v3',score,production_ready:productionReady,cutover_allowed:productionReady,runtime_score:runtimeScore,connector_score:connectors,connector_scores:{funnemail:fmConf.score,bartalk:btConf.score,tmwe2:tmConf.score},migration_score:migration.score,deployment_sync:deployment,blockers,originals_modified:false});
+  return res.status(200).json({contract:'operations.release-gate.v4',score,production_ready:productionReady,cutover_allowed:productionReady,runtime_score:runtimeScore,connector_score:connectors,connector_scores:{funnemail:fmConf.score,bartalk:btConf.score,tmwe2:tmConf.score},migration_score:migration.score,deployment_sync:deployment,blockers,originals_modified:false});
 };
