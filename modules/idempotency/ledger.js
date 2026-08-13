@@ -61,9 +61,9 @@ function error(code, status, message, details = {}) {
   return err;
 }
 
-async function claim({ req, capability, auth, ttlSeconds }) {
+async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
   const currentMode = mode();
-  const key = keyFrom(req);
+  const key = String(keyOverride || keyFrom(req) || '').trim();
   if (!key) {
     if (currentMode === 'enforce') throw error('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key header is required');
     return { execute:true, durable:false, enforced:false, reason:'key_missing', capability };
@@ -141,8 +141,8 @@ async function complete(claimResult, result, responseStatus = 200) {
   return { durable:true };
 }
 
-async function run({ req, capability, auth, responseStatus = 200, ttlSeconds }, operation) {
-  const ticket = await claim({ req, capability, auth, ttlSeconds });
+async function run({ req, capability, auth, responseStatus = 200, ttlSeconds, keyOverride }, operation) {
+  const ticket = await claim({ req, capability, auth, ttlSeconds, keyOverride });
   if (ticket.replayed) return { replayed:true, ticket, result:null };
   const result = await operation();
   await complete(ticket, result, responseStatus);
