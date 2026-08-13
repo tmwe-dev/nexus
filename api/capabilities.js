@@ -1,6 +1,6 @@
 'use strict';
 
-const { CAPABILITIES } = require('../registry/capabilities');
+const { CAPABILITIES, responseContract } = require('../registry/capabilities');
 const { getConnection } = require('../registry/connections');
 
 module.exports = async function handler(req, res) {
@@ -10,7 +10,8 @@ module.exports = async function handler(req, res) {
     const owner = getConnection(capability.owner);
     return {
       name: capability.name,
-      contract: capability.name,
+      capability_contract: capability.name,
+      response_contract: responseContract(capability),
       owner: capability.owner,
       owner_kind: owner?.kind || null,
       owner_status: owner?.status || null,
