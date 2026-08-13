@@ -1,14 +1,5 @@
 'use strict';
-const { probe } = require('../../modules/connections/liveConnector');
-const { evaluate, REQUIRED } = require('../../modules/connections/conformance');
-
-module.exports = async function handler(req,res){
-  res.setHeader('Cache-Control','no-store');
-  const [fm,bt]=await Promise.all([probe('FUNNEMAIL'),probe('BARTALK')]);
-  const services=[
-    evaluate('FUNNEMAIL',fm,REQUIRED.FUNNEMAIL),
-    evaluate('BARTALK',bt,REQUIRED.BARTALK)
-  ];
-  const average=Math.round(services.reduce((a,s)=>a+s.score,0)/services.length);
-  return res.status(200).json({contract:'connections.conformance.v1',score:average,conformant:services.every(s=>s.conformant),services,originals_modified:false});
-};
+const {probe:genericProbe}=require('../../modules/connections/liveConnector');
+const {probe:funnemailProbe}=require('../../modules/funnemail/legacyAdapter');
+const {evaluate,REQUIRED}=require('../../modules/connections/conformance');
+module.exports=async function handler(req,res){res.setHeader('Cache-Control','no-store');const [fm,bt,tm]=await Promise.all([funnemailProbe(),genericProbe('BARTALK'),genericProbe('TMWE2')]);const services=[evaluate('FUNNEMAIL',fm,REQUIRED.FUNNEMAIL),evaluate('BARTALK',bt,REQUIRED.BARTALK),evaluate('TMWE2',tm,REQUIRED.TMWE2)];const average=Math.round(services.reduce((a,s)=>a+s.score,0)/services.length);return res.status(200).json({contract:'connections.conformance.v2',score:average,conformant:services.every(s=>s.conformant),services,focus:{service:'FUNNEMAIL',score:services[0].score,conformant:services[0].conformant},originals_modified:false});};
