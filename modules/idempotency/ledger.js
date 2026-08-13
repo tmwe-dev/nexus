@@ -61,6 +61,17 @@ function error(code, status, message, details = {}) {
   return err;
 }
 
+async function probe() {
+  const cfg = config();
+  if (!cfg) return { configured:false, reachable:false, mode:mode(), ready:false, reason:'control_plane_not_configured' };
+  try {
+    const response = await fetch(`${cfg.baseUrl}/rest/v1/idempotency_ledger?select=capability&limit=1`, { headers:headers(cfg.apiKey, 'return=minimal') });
+    return { configured:true, reachable:response.ok, mode:mode(), ready:response.ok && mode() === 'enforce', status:response.status, reason:response.ok?null:`ledger_http_${response.status}` };
+  } catch (error) {
+    return { configured:true, reachable:false, mode:mode(), ready:false, reason:error.message };
+  }
+}
+
 async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
   const currentMode = mode();
   const key = String(keyOverride || keyFrom(req) || '').trim();
@@ -153,4 +164,4 @@ function readiness() {
   return { mode:mode(), durable_store_configured:Boolean(config()), ready:mode() === 'enforce' && Boolean(config()) };
 }
 
-module.exports = { mode, config, requestHash, keyFrom, actorKey, claim, complete, run, readiness, inferResultRef };
+module.exports = { mode, config, probe, requestHash, keyFrom, actorKey, claim, complete, run, readiness, inferResultRef };
