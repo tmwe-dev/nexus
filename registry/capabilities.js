@@ -28,7 +28,7 @@ const CAPABILITIES = Object.freeze([
   { name:'taxitalk.destination-handoff.v1', owner:'bartalk', route:null, method:'POST', scope:'communication:session', status:'declared', side_effects:true, idempotency_required:true },
 
   { name:'workflow.execute.v1', owner:'cobra', route:'/api/cobra/workflow', method:'POST', scope:'research:execute', status:'compatibility', side_effects:true, idempotency_required:true },
-  { name:'web.research.v1', owner:'cobra', route:null, method:'POST', scope:'research:execute', status:'declared', side_effects:false, idempotency_required:false },
+  { name:'web.research.v1', response_contract:'research.result.v1', owner:'cobra', route:'/api/research/execute', method:'POST', scope:'research:execute', status:'active', side_effects:false, idempotency_required:false },
   { name:'browser.execute.v1', owner:'cobra', route:null, method:'POST', scope:'research:execute', status:'declared', side_effects:true, idempotency_required:true },
 
   { name:'crm.contact.search.v1', owner:'crm', route:'/api/crm/contacts', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
@@ -40,5 +40,6 @@ const CAPABILITIES = Object.freeze([
 function getCapability(name) { return CAPABILITIES.find(item => item.name === name) || null; }
 function capabilitiesForOwner(owner) { return CAPABILITIES.filter(item => item.owner === owner); }
 function capabilityNamesForOwner(owner) { return capabilitiesForOwner(owner).map(item => item.name); }
+function responseContract(capability) { return capability?.response_contract || capability?.name || null; }
 
-module.exports = { CAPABILITIES, getCapability, capabilitiesForOwner, capabilityNamesForOwner };
+module.exports = { CAPABILITIES, getCapability, capabilitiesForOwner, capabilityNamesForOwner, responseContract };
