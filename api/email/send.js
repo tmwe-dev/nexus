@@ -6,6 +6,10 @@ module.exports=async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({error:'Method Not Allowed'});
  const guard=requireScope(req,res,SCOPES.EMAIL_SEND);if(!guard.ok)return;
  const b=req.body||{};if(!b.to||!b.subject)return res.status(400).json({error:'EMAIL_TO_AND_SUBJECT_REQUIRED'});
- try{const payload={...b,html:b.html||b.html_body||b.body||'',body:b.body||b.text||''};const data=await edge(req,'funnemail-send-direct',payload);return res.status(200).json({contract:'email.send.v2',source:'funnemail-send-direct',data});}
- catch(error){return res.status(error.status||502).json({error:'FUNNEMAIL_SEND_UNAVAILABLE',message:error.message,detail:error.detail||null});}
+ try{
+  const recipients=Array.isArray(b.to)?b.to:[b.to];
+  const payload={to:recipients.filter(Boolean),subject:String(b.subject||''),html_body:b.html_body||b.html||b.body||'',text_body:b.text_body||b.text||b.body||''};
+  if(b.user_id)payload.user_id=b.user_id;if(b.reply_to_message_id)payload.reply_to_message_id=b.reply_to_message_id;if(b.attachments)payload.attachments=b.attachments;
+  const data=await edge(req,'funnemail-send-direct',payload);return res.status(200).json({contract:'email.send.v3',source:'funnemail-send-direct',data});
+ }catch(error){return res.status(error.status||502).json({error:'FUNNEMAIL_SEND_UNAVAILABLE',message:error.message,detail:error.detail||null});}
 };
