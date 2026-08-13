@@ -29,6 +29,8 @@ function resolveConnectionConfig(connectionOrId) {
     endpoint_env: endpoint.env,
     token_env: token.env,
     configured: internal || Boolean(endpoint.value && (!connection.tokenEnv || token.value)),
+    target_base: targetEndpoint.value.replace(/\/$/, ''),
+    target_token: targetToken.value,
     target_endpoint_env: targetEndpoint.env,
     target_token_env: targetToken.env,
     target_configured: Boolean(connection.targetEndpointEnv && targetEndpoint.value && (!connection.targetTokenEnv || targetToken.value))
