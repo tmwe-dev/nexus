@@ -1,16 +1,19 @@
+'use strict';
+
 const { evidenceReadiness } = require('./evidenceReadiness');
 const { config: evidenceStoreConfig } = require('./evidenceStore');
 const { getCapability } = require('../../registry/capabilities');
 const { getConnection } = require('../../registry/connections');
 const { resolveConnectionConfig } = require('../connections/config');
+const idempotency = require('../idempotency/ledger');
 
-function architectureBlockers(capabilityName) {
+async function architectureBlockers(capabilityName, idempotencyStatus = null) {
   const capability = getCapability(capabilityName);
   if (!capability) return ['canonical_capability_registry'];
 
   const blockers = [];
   if (!capability.route) blockers.push('capability_route_not_implemented');
-  if (capability.idempotency_required) blockers.push('idempotency_enforcement');
+  if (capability.idempotency_required && !idempotencyStatus?.ready) blockers.push('idempotency_enforcement');
 
   const connection = getConnection(capability.owner);
   if (!connection) blockers.push('capability_owner_not_registered');
@@ -23,14 +26,18 @@ function architectureBlockers(capabilityName) {
   return blockers;
 }
 
-function planCutover(capability) {
+async function planCutover(capability) {
   const evidence = evidenceReadiness(capability);
-  if (!evidence.found) return { contract:'migration.cutover-plan.v4', capability, executable:false, reason:'capability_not_mapped', steps:[] };
+  if (!evidence.found) return { contract:'migration.cutover-plan.v5', capability, executable:false, reason:'capability_not_mapped', steps:[] };
 
+  const capabilityDefinition = getCapability(capability);
+  const idempotencyStatus = capabilityDefinition?.idempotency_required
+    ? await idempotency.probe()
+    : { required:false, ready:true, mode:idempotency.mode(), configured:Boolean(idempotency.config()) };
   const readiness = evidence.readiness;
   const durableEvidenceReady = Boolean(evidenceStoreConfig());
   const authReady = String(process.env.NEXUS_AUTH_MODE || 'audit').toLowerCase() === 'enforce' && Boolean(process.env.NEXUS_SERVICE_TOKEN_REGISTRY);
-  const architecture = architectureBlockers(capability);
+  const architecture = await architectureBlockers(capability, idempotencyStatus);
   const blockers = [...readiness.blockers];
   if (!durableEvidenceReady) blockers.push('durable_evidence_store');
   if (!authReady) blockers.push('service_auth_enforcement');
@@ -48,7 +55,7 @@ function planCutover(capability) {
     'confirm observability is active',
     'confirm durable control-plane evidence store is configured',
     'confirm service authentication is in enforce mode',
-    'confirm side-effecting capability idempotency is enforced when required',
+    'confirm durable idempotency ledger is reachable and enforced when required',
     'confirm compatibility adapters have been replaced by stable service boundaries',
     'switch consumer routing to Nexus',
     'observe error and mismatch rates',
@@ -56,12 +63,13 @@ function planCutover(capability) {
   ];
 
   return {
-    contract:'migration.cutover-plan.v4',
+    contract:'migration.cutover-plan.v5',
     capability,
     executable,
     readiness_score:readiness.score,
     durable_evidence_ready:durableEvidenceReady,
     service_auth_ready:authReady,
+    idempotency:idempotencyStatus,
     architecture_ready:architectureReady,
     blockers:uniqueBlockers,
     evidence:evidence.evidence,
