@@ -14,13 +14,12 @@ module.exports=async function handler(req,res){
  const capabilities=capabilitiesForOwner('funnemail');
  const blockers=[
   'stable_funnemail_service_boundary',
-  'browser_user_auth_vs_service_auth',
   ...capabilities.filter(item=>item.idempotency_required).map(item=>`idempotency:${item.name}`)
  ];
  if(!runtime.configured)blockers.push('compatibility_runtime_configuration');
  else if(!runtime.reachable)blockers.push('compatibility_runtime_reachability');
  return res.status(200).json({
-  contract:'funnemail.integration-status.v2',
+  contract:'funnemail.integration-status.v3',
   integration:runtime.reachable?'compatibility-live':'compatibility-not-ready',
   production_ready:false,
   adapter:'supabase-rest-edge-compatibility',
@@ -28,6 +27,7 @@ module.exports=async function handler(req,res){
   target_service_boundary_configured:Boolean(config?.target_configured),
   authenticated,
   user:currentUser,
+  auth:{service_to_service:true,user_token_bridge:true,enforce_compatible:true,service_token_in_browser:false},
   capabilities:{published:capabilities.length,implemented:capabilities.filter(item=>item.route).length,production_ready:0},
   blockers:Array.from(new Set(blockers)),
   originals_modified:false
