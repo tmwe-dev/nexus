@@ -12,7 +12,7 @@ const CONNECTIONS = [
     endpointEnv: 'REPORT_AZIENDE_BASE_URL', tokenEnv: 'REPORT_AZIENDE_SERVICE_TOKEN'
   },
   {
-    id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false
+    id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false, internal: true
   },
   {
     id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'compatibility-direct-supabase', mode: 'read-write',
