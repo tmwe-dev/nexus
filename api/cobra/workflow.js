@@ -1,3 +1,8 @@
+'use strict';
+
+const { requireScope } = require('../../modules/security/apiGuard');
+const { SCOPES } = require('../../modules/security/scopes');
+
 function cobraHeaders() {
   const headers = { Accept: 'application/json', 'Content-Type': 'application/json' };
   if (process.env.COBRA_SERVICE_TOKEN) headers['X-Cobra-Token'] = process.env.COBRA_SERVICE_TOKEN;
@@ -6,6 +11,8 @@ function cobraHeaders() {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const guard = requireScope(req, res, SCOPES.RESEARCH_EXECUTE);
+  if (!guard.ok) return;
 
   const configured = process.env.COBRA_BASE_URL;
   if (!configured) return res.status(503).json({ error: 'COBRA connection not configured' });
