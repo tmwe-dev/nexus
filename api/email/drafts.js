@@ -1,9 +1,9 @@
 'use strict';
-const { requireScope }=require('../../modules/security/apiGuard');
+const { requireEmailAccess }=require('../../modules/funnemail/accessGuard');
 const { SCOPES }=require('../../modules/security/scopes');
 const { rest }=require('../../modules/funnemail/legacyAdapter');
 module.exports=async function handler(req,res){
- const scope=req.method==='GET'?SCOPES.EMAIL_READ:SCOPES.EMAIL_WRITE;const guard=requireScope(req,res,scope);if(!guard.ok)return;
+ const scope=req.method==='GET'?SCOPES.EMAIL_READ:SCOPES.EMAIL_WRITE;const guard=await requireEmailAccess(req,res,scope);if(!guard.ok)return;
  try{
   if(req.method==='GET'){
    const limit=Math.min(Math.max(Number(req.query.limit)||100,1),500),status=String(req.query.status||'').trim();
