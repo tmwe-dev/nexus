@@ -19,8 +19,8 @@ function resolveConnectionConfig(connectionOrId) {
   const token = firstConfigured(connection.tokenEnv, connection.tokenEnvAliases || []);
   const targetEndpoint = firstConfigured(connection.targetEndpointEnv, connection.targetEndpointEnvAliases || []);
   const targetToken = firstConfigured(connection.targetTokenEnv, connection.targetTokenEnvAliases || []);
+  const internal = connection.internal === true;
 
-  const internal = !connection.endpointEnv;
   return {
     id: connection.id,
     internal,
