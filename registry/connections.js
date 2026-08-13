@@ -34,6 +34,8 @@ const CONNECTIONS = [
     id: 'crm', name: 'CRM', kind: 'application', status: 'contacts-read-extraction-active', mode: 'independent-read-adapter', sourceOfTruth: false,
     repository: 'tmwe-dev/nexus', endpointEnv: 'NEXUS_CRM_STORE_URL', tokenEnv: 'NEXUS_CRM_STORE_TOKEN'
   },
+  { id:'sales-intelligence', name:'Sales Intelligence', kind:'service', status:'active-internal', mode:'read', internal:true },
+  { id:'marketing', name:'Marketing Planner', kind:'service', status:'active-internal', mode:'plan', internal:true },
   { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator' },
   { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none' }
 ].map(connection => Object.freeze({ ...connection, capabilities: capabilityNamesForOwner(connection.id) }));
