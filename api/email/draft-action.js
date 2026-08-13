@@ -13,12 +13,12 @@ module.exports=async function handler(req,res){
   else if(action==='schedule')patch={status:'programmata',scheduled_at:b.scheduled_at||null};
   else if(action==='update')patch={...(b.subject!==undefined?{subject:b.subject}:{}),...(b.html_body!==undefined||b.body!==undefined?{html_body:b.html_body||b.body}: {})};
   else if(action==='send'){
-   const rows=await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);const d=rows?.[0];if(!d)return res.status(404).json({error:'DRAFT_NOT_FOUND'});
-   const send=await edge(req,'funnemail-send-direct',{to:b.to||d.to_address,subject:d.subject||'',html:d.html_body||'',body:b.body||''});
-   await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:{status:'inviata',sent_at:new Date().toISOString()}});
-   return res.status(200).json({contract:'email.draft.action.v1',action:'send',data:send});
+   if(b.html_body!==undefined||b.body!==undefined)await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:{html_body:b.html_body||b.body,status:'approvata'}});
+   else await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:{status:'approvata'}});
+   const send=await edge(req,'funnemail-send-direct',{draft_id:id});
+   return res.status(200).json({contract:'email.draft.action.v2',action:'send',source:'funnemail-send-direct',data:send});
   } else return res.status(400).json({error:'UNSUPPORTED_DRAFT_ACTION'});
   const data=await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:patch});
-  return res.status(200).json({contract:'email.draft.action.v1',action,data:Array.isArray(data)?data[0]:data});
+  return res.status(200).json({contract:'email.draft.action.v2',action,data:Array.isArray(data)?data[0]:data});
  }catch(error){return res.status(error.status||502).json({error:'FUNNEMAIL_DRAFT_ACTION_UNAVAILABLE',message:error.message,detail:error.detail||null});}
 };
