@@ -1,10 +1,10 @@
 'use strict';
-const { requireScope }=require('../../modules/security/apiGuard');
+const { requireEmailAccess }=require('../../modules/funnemail/accessGuard');
 const { SCOPES }=require('../../modules/security/scopes');
 const { rest }=require('../../modules/funnemail/legacyAdapter');
 function due(priority){const h={1:4,2:24,3:72,4:168,5:720}[priority]||72;return new Date(Date.now()+h*3600000).toISOString();}
 module.exports=async function handler(req,res){
- const scope=req.method==='GET'?SCOPES.EMAIL_READ:SCOPES.EMAIL_WRITE;const guard=requireScope(req,res,scope);if(!guard.ok)return;
+ const scope=req.method==='GET'?SCOPES.EMAIL_READ:SCOPES.EMAIL_WRITE;const guard=await requireEmailAccess(req,res,scope);if(!guard.ok)return;
  try{
   if(req.method==='GET'){const rows=await rest(req,'/funnemail_tasks_board?select=*&order=due_at.asc.nullslast,created_at.desc&limit=500').catch(()=>rest(req,'/funnemail_tasks?select=*&order=created_at.desc.nullslast&limit=500'));return res.status(200).json({contract:'email.tasks.v2',items:rows||[]});}
   if(req.method==='POST'){
