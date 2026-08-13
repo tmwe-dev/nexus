@@ -1,10 +1,10 @@
 'use strict';
-const { requireScope }=require('../../modules/security/apiGuard');
+const { requireEmailAccess }=require('../../modules/funnemail/accessGuard');
 const { SCOPES }=require('../../modules/security/scopes');
 const { rest,normalizeMessage }=require('../../modules/funnemail/legacyAdapter');
 module.exports=async function handler(req,res){
  if(req.method!=='GET')return res.status(405).json({error:'Method Not Allowed'});
- const guard=requireScope(req,res,SCOPES.EMAIL_READ);if(!guard.ok)return;
+ const guard=await requireEmailAccess(req,res,SCOPES.EMAIL_READ);if(!guard.ok)return;
  try{
   const limit=Math.min(Math.max(Number(req.query.limit)||50,1),500),offset=Math.max(Number(req.query.offset)||0,0),search=String(req.query.search||'').trim();
   const cols='id,channel,direction,from_address,from_name,to_address,to_name,subject,email_date,internal_date,created_at,read_at,folder,category,smart_folder,thread_id,thread_key,imap_flags,ai_classification_suggestion,ai_summary,ai_intent,ai_tags,ai_keyfacts,ai_sentiment,phishing_risk,phishing_reasons,due_at';
