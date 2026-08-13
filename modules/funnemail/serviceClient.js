@@ -5,16 +5,14 @@ const { tokenFrom } = require('./legacyAdapter');
 const { probeTarget } = require('../connections/targetProbe');
 
 function config() { return resolveConnectionConfig('funnemail'); }
-function configured() { const cfg=config(); return Boolean(cfg?.target_configured && cfg.target_base && cfg.target_token); }
+function configured() { const cfg=config(); return Boolean(cfg?.target_configured && cfg.target_base); }
 
 function headers(req) {
-  const cfg=config();
   const out={
     Accept:'application/json',
-    'Content-Type':'application/json',
-    'X-Nexus-Service-Token':cfg?.target_token || ''
+    'Content-Type':'application/json'
   };
-  const userToken=tokenFrom(req);if(userToken)out['X-Funnemail-User-Token']=userToken;
+  const userToken=tokenFrom(req);if(userToken)out.Authorization=`Bearer ${userToken}`;
   const idem=String(req?.headers?.['idempotency-key']||req?.headers?.['x-idempotency-key']||'').trim();if(idem)out['Idempotency-Key']=idem;
   return out;
 }
