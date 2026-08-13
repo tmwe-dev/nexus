@@ -1,10 +1,10 @@
 'use strict';
-const { requireScope }=require('../../modules/security/apiGuard');
+const { requireEmailAccess }=require('../../modules/funnemail/accessGuard');
 const { SCOPES }=require('../../modules/security/scopes');
 const { rest,edge }=require('../../modules/funnemail/legacyAdapter');
 module.exports=async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({error:'Method Not Allowed'});
- const guard=requireScope(req,res,SCOPES.EMAIL_WRITE);if(!guard.ok)return;
+ const guard=await requireEmailAccess(req,res,SCOPES.EMAIL_WRITE);if(!guard.ok)return;
  const b=req.body||{},id=String(b.message_id||b.id||'').trim(),action=String(b.action||'').toLowerCase();if(!id||!action)return res.status(400).json({error:'MESSAGE_ID_AND_ACTION_REQUIRED'});
  try{
   if(action==='read'||action==='unread'){
