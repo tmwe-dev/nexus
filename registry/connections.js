@@ -15,11 +15,11 @@ const CONNECTIONS = [
     id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false, internal: true
   },
   {
-    id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'compatibility-direct-supabase', mode: 'read-write',
+    id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'stable-boundary-deployed', mode: 'read-write',
     repository: 'tmwe-dev/funnemail',
     endpointEnv: 'NEXUS_FUNNEMAIL_SUPABASE_URL', tokenEnv: 'NEXUS_FUNNEMAIL_ANON_KEY',
-    targetEndpointEnv: 'FUNNEMAIL_BASE_URL', targetTokenEnv: 'FUNNEMAIL_SERVICE_TOKEN',
-    targetAuthHeader: 'X-Nexus-Service-Token', targetHealthPath: '/health'
+    targetEndpointEnv: 'FUNNEMAIL_BASE_URL',
+    targetAuthMode: 'delegated-user-jwt', targetHealthPath: '/health'
   },
   {
     id: 'bartalk', name: 'BarTalk / Voice Translator', kind: 'application', status: 'source-mapped-contract-design', mode: 'session',
