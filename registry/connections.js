@@ -18,7 +18,8 @@ const CONNECTIONS = [
     id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'compatibility-direct-supabase', mode: 'read-write',
     repository: 'tmwe-dev/funnemail',
     endpointEnv: 'NEXUS_FUNNEMAIL_SUPABASE_URL', tokenEnv: 'NEXUS_FUNNEMAIL_ANON_KEY',
-    targetEndpointEnv: 'FUNNEMAIL_BASE_URL', targetTokenEnv: 'FUNNEMAIL_SERVICE_TOKEN'
+    targetEndpointEnv: 'FUNNEMAIL_BASE_URL', targetTokenEnv: 'FUNNEMAIL_SERVICE_TOKEN',
+    targetAuthHeader: 'X-Nexus-Service-Token', targetHealthPath: '/health'
   },
   {
     id: 'bartalk', name: 'BarTalk / Voice Translator', kind: 'application', status: 'source-mapped-contract-design', mode: 'session',
