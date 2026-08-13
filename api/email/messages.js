@@ -10,6 +10,6 @@ module.exports=async function handler(req,res){
   const cols='id,channel,direction,from_address,from_name,to_address,to_name,subject,email_date,internal_date,created_at,read_at,folder,category,smart_folder,thread_id,thread_key,imap_flags,ai_classification_suggestion,ai_summary,ai_intent,ai_tags,ai_keyfacts,ai_sentiment,phishing_risk,phishing_reasons,due_at';
   let path=`/channel_messages?channel=eq.email&direction=eq.inbound&deleted_at=is.null&select=${encodeURIComponent(cols)}&order=email_date.desc.nullslast&limit=${limit}&offset=${offset}`;
   if(search)path+=`&or=${encodeURIComponent(`subject.ilike.*${search}*,from_address.ilike.*${search}*,from_name.ilike.*${search}*`)}`;
-  const rows=await rest(req,path);return res.status(200).json({contract:'email.messages.v2',source:'funnemail-supabase-adapter',items:(rows||[]).map(normalizeMessage),page:{limit,offset,count:(rows||[]).length}});
+  const rows=await rest(req,path);return res.status(200).json({contract:'email.message.search.v1',source:'funnemail-compatibility-adapter',items:(rows||[]).map(normalizeMessage),page:{limit,offset,count:(rows||[]).length}});
  }catch(error){return res.status(error.status||502).json({error:'FUNNEMAIL_READ_UNAVAILABLE',message:error.message,detail:error.detail||null});}
 };
