@@ -34,7 +34,12 @@ const CAPABILITIES = Object.freeze([
   { name:'crm.contact.search.v1', owner:'crm', route:'/api/crm/contacts', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
   { name:'crm.contact.read.v1', owner:'crm', route:'/api/crm/contact-detail', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
   { name:'crm.pipeline.search.v1', owner:'crm', route:'/api/crm/pipeline', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
-  { name:'crm.activity.search.v1', owner:'crm', route:'/api/crm/activities', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false }
+  { name:'crm.activity.search.v1', owner:'crm', route:'/api/crm/activities', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
+  { name:'crm.account.search.v1', owner:'crm', route:'/api/crm/accounts', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
+  { name:'crm.opportunity.search.v1', owner:'crm', route:'/api/crm/opportunities', method:'GET', scope:'crm:read', status:'extraction', side_effects:false, idempotency_required:false },
+
+  { name:'sales.priorities.v1', response_contract:'sales.intelligence.priorities.v1', owner:'sales-intelligence', route:'/api/sales/priorities', method:'GET', scope:'sales:read', status:'active', side_effects:false, idempotency_required:false },
+  { name:'marketing.campaign.plan.v1', owner:'marketing', route:'/api/marketing/campaign-plan', method:'POST', scope:'marketing:plan', status:'active', side_effects:false, idempotency_required:false }
 ]);
 
 function getCapability(name) { return CAPABILITIES.find(item => item.name === name) || null; }
