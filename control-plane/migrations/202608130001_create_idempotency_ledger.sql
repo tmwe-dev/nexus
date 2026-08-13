@@ -40,7 +40,7 @@ set search_path = public
 as $$
 declare
   existing public.idempotency_ledger%rowtype;
-  inserted boolean := false;
+  affected_rows integer := 0;
 begin
   insert into public.idempotency_ledger (
     capability, actor_key, idempotency_key, request_hash, state, expires_at
@@ -54,7 +54,7 @@ begin
   )
   on conflict (capability, actor_key, idempotency_key) do nothing;
 
-  get diagnostics inserted = row_count;
+  get diagnostics affected_rows = row_count;
 
   select * into existing
   from public.idempotency_ledger
@@ -63,7 +63,7 @@ begin
     and idempotency_key = p_idempotency_key
   for update;
 
-  if inserted then
+  if affected_rows = 1 then
     return query select 'execute', existing.state, existing.result_ref, existing.response_status, existing.request_hash;
     return;
   end if;
