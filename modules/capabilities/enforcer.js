@@ -1,7 +1,7 @@
 'use strict';
 
 const { getConnection } = require('../../registry/connections');
-const { getCapability } = require('../../registry/capabilities');
+const { getCapability, responseContract } = require('../../registry/capabilities');
 const { resolveConnectionConfig } = require('../connections/config');
 
 function checkCapability(serviceId, capabilityName, { requireConfigured = false, requireRoute = true } = {}) {
@@ -22,7 +22,8 @@ function checkCapability(serviceId, capabilityName, { requireConfigured = false,
     allowed:true,
     service_id:serviceId,
     capability:capabilityName,
-    contract:capability.name,
+    capability_contract:capability.name,
+    response_contract:responseContract(capability),
     route:capability.route,
     method:capability.method,
     scope:capability.scope,
