@@ -2,21 +2,25 @@
 
 const crypto = require('crypto');
 
+const DEFAULT_CONTROL_PLANE_URL = 'https://rxocvyfhsqduowltmfbp.supabase.co';
+const DEFAULT_CONTROL_PLANE_PUBLISHABLE_KEY = 'sb_publishable_hRmtjGfQm21kYj6rPsrX1A_1t64x_Lt';
+
 function mode() {
   const value = String(process.env.NEXUS_IDEMPOTENCY_MODE || 'audit').toLowerCase();
   return value === 'enforce' ? 'enforce' : 'audit';
 }
 
 function config() {
-  const baseUrl = String(process.env.NEXUS_CONTROL_PLANE_URL || '').trim().replace(/\/$/, '');
-  const apiKey = String(process.env.NEXUS_CONTROL_PLANE_KEY || '').trim();
-  return baseUrl && apiKey ? { baseUrl, apiKey } : null;
+  const baseUrl = String(process.env.NEXUS_CONTROL_PLANE_URL || DEFAULT_CONTROL_PLANE_URL).trim().replace(/\/$/, '');
+  const serviceKey = String(process.env.NEXUS_CONTROL_PLANE_KEY || '').trim();
+  const publishableKey = String(process.env.NEXUS_CONTROL_PLANE_PUBLISHABLE_KEY || DEFAULT_CONTROL_PLANE_PUBLISHABLE_KEY).trim();
+  return { baseUrl, serviceKey, publishableKey, userRpcReady:Boolean(baseUrl && publishableKey), serviceRpcReady:Boolean(baseUrl && serviceKey) };
 }
 
-function headers(apiKey) {
+function headers(apiKey, bearerToken = apiKey) {
   return {
     apikey: apiKey,
-    Authorization: `Bearer ${apiKey}`,
+    Authorization: `Bearer ${bearerToken}`,
     'Content-Type': 'application/json'
   };
 }
@@ -33,12 +37,16 @@ function canonicalize(value) {
 }
 
 function requestHash(req) {
-  const payload = canonicalize({ body: req?.body ?? null, query: req?.query ?? null });
+  const payload = canonicalize({ body:req?.body ?? null, query:req?.query ?? null });
   return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
 function keyFrom(req) {
   return String(req?.headers?.['idempotency-key'] || req?.headers?.['x-idempotency-key'] || '').trim();
+}
+
+function userTokenFrom(req) {
+  return String(req?.headers?.['x-funnemail-access-token'] || '').trim();
 }
 
 function validateKey(key) {
@@ -60,11 +68,11 @@ function error(code, status, message, details = {}) {
   return err;
 }
 
-async function rpc(cfg, name, body = {}) {
-  const response = await fetch(`${cfg.baseUrl}/rest/v1/rpc/${name}`, {
-    method: 'POST',
-    headers: headers(cfg.apiKey),
-    body: JSON.stringify(body)
+async function rpc(baseUrl, name, body, rpcHeaders) {
+  const response = await fetch(`${baseUrl}/rest/v1/rpc/${name}`, {
+    method:'POST',
+    headers:rpcHeaders,
+    body:JSON.stringify(body || {})
   });
   const text = await response.text();
   let data = null;
@@ -72,22 +80,57 @@ async function rpc(cfg, name, body = {}) {
   return { response, data };
 }
 
+function requestPath(req, auth) {
+  const cfg = config();
+  if (auth?.mode === 'funnemail-user') {
+    const token = userTokenFrom(req);
+    if (!cfg.userRpcReady || !token) return null;
+    return {
+      kind:'user',
+      cfg,
+      headers:headers(cfg.publishableKey, token),
+      claimRpc:'nexus_user_idempotency_claim',
+      completeRpc:'nexus_user_idempotency_complete'
+    };
+  }
+  if (!cfg.serviceRpcReady) return null;
+  return {
+    kind:'service',
+    cfg,
+    headers:headers(cfg.serviceKey),
+    claimRpc:'nexus_idempotency_claim',
+    completeRpc:'nexus_idempotency_complete'
+  };
+}
+
 async function probe() {
   const cfg = config();
-  if (!cfg) return { configured:false, reachable:false, mode:mode(), ready:false, reason:'control_plane_not_configured' };
+  if (!cfg.serviceRpcReady) {
+    return {
+      configured:cfg.userRpcReady,
+      reachable:null,
+      mode:mode(),
+      ready:false,
+      user_rpc_ready:cfg.userRpcReady,
+      service_rpc_ready:false,
+      reason:'service_probe_key_not_configured'
+    };
+  }
   try {
-    const { response, data } = await rpc(cfg, 'nexus_idempotency_probe');
+    const { response, data } = await rpc(cfg.baseUrl, 'nexus_idempotency_probe', {}, headers(cfg.serviceKey));
     return {
       configured:true,
       reachable:response.ok,
       mode:mode(),
       ready:response.ok && mode() === 'enforce',
+      user_rpc_ready:cfg.userRpcReady,
+      service_rpc_ready:true,
       status:response.status,
       stats:Array.isArray(data) ? data[0] || null : data,
       reason:response.ok ? null : `ledger_probe_http_${response.status}`
     };
-  } catch (error) {
-    return { configured:true, reachable:false, mode:mode(), ready:false, reason:error.message };
+  } catch (err) {
+    return { configured:true, reachable:false, mode:mode(), ready:false, user_rpc_ready:cfg.userRpcReady, service_rpc_ready:true, reason:err.message };
   }
 }
 
@@ -100,22 +143,30 @@ async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
   }
   if (!validateKey(key)) throw error('IDEMPOTENCY_KEY_INVALID', 400, 'Invalid Idempotency-Key format');
 
-  const cfg = config();
-  if (!cfg) {
-    if (currentMode === 'enforce') throw error('IDEMPOTENCY_STORE_UNAVAILABLE', 503, 'Durable idempotency store is not configured');
-    return { execute:true, durable:false, enforced:false, reason:'store_not_configured', capability, key };
+  const path = requestPath(req, auth);
+  if (!path) {
+    if (currentMode === 'enforce') throw error('IDEMPOTENCY_STORE_UNAVAILABLE', 503, 'Durable idempotency path is not configured for this actor');
+    return { execute:true, durable:false, enforced:false, reason:'store_not_configured_for_actor', capability, key };
   }
 
   const actor = actorKey(auth);
   const hash = requestHash(req);
-  const { response, data } = await rpc(cfg, 'nexus_idempotency_claim', {
-    p_capability: capability,
-    p_actor_key: actor,
-    p_idempotency_key: key,
-    p_request_hash: hash,
-    p_ttl_seconds: Math.max(60, Math.min(Number(ttlSeconds || process.env.NEXUS_IDEMPOTENCY_TTL_SECONDS) || 86400, 604800))
-  });
+  const body = path.kind === 'user'
+    ? {
+        p_capability:capability,
+        p_idempotency_key:key,
+        p_request_hash:hash,
+        p_ttl_seconds:Math.max(60, Math.min(Number(ttlSeconds || process.env.NEXUS_IDEMPOTENCY_TTL_SECONDS) || 86400, 604800))
+      }
+    : {
+        p_capability:capability,
+        p_actor_key:actor,
+        p_idempotency_key:key,
+        p_request_hash:hash,
+        p_ttl_seconds:Math.max(60, Math.min(Number(ttlSeconds || process.env.NEXUS_IDEMPOTENCY_TTL_SECONDS) || 86400, 604800))
+      };
 
+  const { response, data } = await rpc(path.cfg.baseUrl, path.claimRpc, body, path.headers);
   if (!response.ok) {
     if (currentMode === 'enforce') throw error('IDEMPOTENCY_CLAIM_FAILED', 503, `Idempotency claim failed with ${response.status}`);
     return { execute:true, durable:false, enforced:false, reason:`claim_http_${response.status}`, capability, key };
@@ -124,7 +175,7 @@ async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
   const row = Array.isArray(data) ? data[0] : data;
   if (!row?.decision) throw error('IDEMPOTENCY_CLAIM_INVALID', 503, 'Idempotency claim returned no decision');
 
-  const base = { durable:true, enforced:currentMode === 'enforce', capability, key, actor, request_hash:hash };
+  const base = { durable:true, enforced:currentMode === 'enforce', capability, key, actor, request_hash:hash, path:path.kind };
   if (row.decision === 'execute') return { ...base, execute:true, replayed:false };
   if (row.decision === 'replay') return { ...base, execute:false, replayed:true, result_ref:row.current_result_ref || null, response_status:row.current_response_status || 200 };
   if (row.decision === 'conflict') throw error('IDEMPOTENCY_KEY_CONFLICT', 409, 'Idempotency key was already used with a different request');
@@ -141,20 +192,34 @@ function inferResultRef(result) {
   return null;
 }
 
-async function complete(claimResult, result, responseStatus = 200) {
+async function complete(claimResult, result, responseStatus = 200, req = null, auth = null) {
   if (!claimResult?.durable || !claimResult.execute) return { durable:false };
-  const cfg = config();
-  if (!cfg) throw error('IDEMPOTENCY_COMMIT_FAILED', 503, 'Idempotency store disappeared after execution', { operation_may_have_completed:true });
 
-  const { response, data } = await rpc(cfg, 'nexus_idempotency_complete', {
-    p_capability: claimResult.capability,
-    p_actor_key: claimResult.actor,
-    p_idempotency_key: claimResult.key,
-    p_request_hash: claimResult.request_hash,
-    p_result_ref: inferResultRef(result),
-    p_response_status: responseStatus
-  });
+  const path = requestPath(req, auth) || (() => {
+    const cfg = config();
+    if (claimResult.path === 'service' && cfg.serviceRpcReady) return { kind:'service', cfg, headers:headers(cfg.serviceKey), completeRpc:'nexus_idempotency_complete' };
+    return null;
+  })();
+  if (!path) throw error('IDEMPOTENCY_COMMIT_FAILED', 503, 'Idempotency store disappeared after execution', { operation_may_have_completed:true });
 
+  const body = path.kind === 'user'
+    ? {
+        p_capability:claimResult.capability,
+        p_idempotency_key:claimResult.key,
+        p_request_hash:claimResult.request_hash,
+        p_result_ref:inferResultRef(result),
+        p_response_status:responseStatus
+      }
+    : {
+        p_capability:claimResult.capability,
+        p_actor_key:claimResult.actor,
+        p_idempotency_key:claimResult.key,
+        p_request_hash:claimResult.request_hash,
+        p_result_ref:inferResultRef(result),
+        p_response_status:responseStatus
+      };
+
+  const { response, data } = await rpc(path.cfg.baseUrl, path.completeRpc, body, path.headers);
   const completed = data === true || (Array.isArray(data) && data[0] === true);
   if (!response.ok || !completed) {
     throw error('IDEMPOTENCY_COMMIT_FAILED', 503, `Idempotency completion failed with ${response.status}`, {
@@ -169,12 +234,19 @@ async function run({ req, capability, auth, responseStatus = 200, ttlSeconds, ke
   const ticket = await claim({ req, capability, auth, ttlSeconds, keyOverride });
   if (ticket.replayed) return { replayed:true, ticket, result:null };
   const result = await operation();
-  await complete(ticket, result, responseStatus);
+  await complete(ticket, result, responseStatus, req, auth);
   return { replayed:false, ticket, result };
 }
 
 function readiness() {
-  return { mode:mode(), durable_store_configured:Boolean(config()), ready:mode() === 'enforce' && Boolean(config()) };
+  const cfg = config();
+  return {
+    mode:mode(),
+    user_durable_store_configured:cfg.userRpcReady,
+    service_durable_store_configured:cfg.serviceRpcReady,
+    ready_for_funnemail:mode() === 'enforce' && cfg.userRpcReady,
+    ready_for_service_workflows:mode() === 'enforce' && cfg.serviceRpcReady
+  };
 }
 
 module.exports = { mode, config, probe, requestHash, keyFrom, actorKey, claim, complete, run, readiness, inferResultRef };
