@@ -5,9 +5,21 @@ const crypto = require('crypto');
 const DEFAULT_CONTROL_PLANE_URL = 'https://rxocvyfhsqduowltmfbp.supabase.co';
 const DEFAULT_CONTROL_PLANE_PUBLISHABLE_KEY = 'sb_publishable_hRmtjGfQm21kYj6rPsrX1A_1t64x_Lt';
 
-function mode() {
-  const value = String(process.env.NEXUS_IDEMPOTENCY_MODE || 'audit').toLowerCase();
-  return value === 'enforce' ? 'enforce' : 'audit';
+function normalizeMode(value, fallback = 'audit') {
+  const v = String(value || fallback).toLowerCase();
+  return v === 'enforce' ? 'enforce' : 'audit';
+}
+
+function serviceMode() {
+  return normalizeMode(process.env.NEXUS_SERVICE_IDEMPOTENCY_MODE || process.env.NEXUS_IDEMPOTENCY_MODE || 'audit');
+}
+
+function userMode() {
+  return normalizeMode(process.env.NEXUS_USER_IDEMPOTENCY_MODE || 'enforce', 'enforce');
+}
+
+function mode(auth = null) {
+  return auth?.mode === 'funnemail-user' ? userMode() : serviceMode();
 }
 
 function config() {
@@ -109,7 +121,8 @@ async function probe() {
     return {
       configured:cfg.userRpcReady,
       reachable:null,
-      mode:mode(),
+      user_mode:userMode(),
+      service_mode:serviceMode(),
       ready:false,
       user_rpc_ready:cfg.userRpcReady,
       service_rpc_ready:false,
@@ -121,8 +134,9 @@ async function probe() {
     return {
       configured:true,
       reachable:response.ok,
-      mode:mode(),
-      ready:response.ok && mode() === 'enforce',
+      user_mode:userMode(),
+      service_mode:serviceMode(),
+      ready:response.ok && userMode() === 'enforce',
       user_rpc_ready:cfg.userRpcReady,
       service_rpc_ready:true,
       status:response.status,
@@ -130,12 +144,12 @@ async function probe() {
       reason:response.ok ? null : `ledger_probe_http_${response.status}`
     };
   } catch (err) {
-    return { configured:true, reachable:false, mode:mode(), ready:false, user_rpc_ready:cfg.userRpcReady, service_rpc_ready:true, reason:err.message };
+    return { configured:true, reachable:false, user_mode:userMode(), service_mode:serviceMode(), ready:false, user_rpc_ready:cfg.userRpcReady, service_rpc_ready:true, reason:err.message };
   }
 }
 
 async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
-  const currentMode = mode();
+  const currentMode = mode(auth);
   const key = String(keyOverride || keyFrom(req) || '').trim();
   if (!key) {
     if (currentMode === 'enforce') throw error('IDEMPOTENCY_KEY_REQUIRED', 400, 'Idempotency-Key header is required');
@@ -241,12 +255,13 @@ async function run({ req, capability, auth, responseStatus = 200, ttlSeconds, ke
 function readiness() {
   const cfg = config();
   return {
-    mode:mode(),
+    user_mode:userMode(),
+    service_mode:serviceMode(),
     user_durable_store_configured:cfg.userRpcReady,
     service_durable_store_configured:cfg.serviceRpcReady,
-    ready_for_funnemail:mode() === 'enforce' && cfg.userRpcReady,
-    ready_for_service_workflows:mode() === 'enforce' && cfg.serviceRpcReady
+    ready_for_funnemail:userMode() === 'enforce' && cfg.userRpcReady,
+    ready_for_service_workflows:serviceMode() === 'enforce' && cfg.serviceRpcReady
   };
 }
 
-module.exports = { mode, config, probe, requestHash, keyFrom, actorKey, claim, complete, run, readiness, inferResultRef };
+module.exports = { mode, userMode, serviceMode, config, probe, requestHash, keyFrom, actorKey, claim, complete, run, readiness, inferResultRef };
