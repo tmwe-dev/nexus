@@ -17,6 +17,11 @@ create index if not exists idempotency_ledger_expires_at_idx
 
 alter table public.idempotency_ledger enable row level security;
 
+revoke all on table public.idempotency_ledger from public;
+revoke all on table public.idempotency_ledger from anon;
+revoke all on table public.idempotency_ledger from authenticated;
+grant select, insert, update, delete on table public.idempotency_ledger to service_role;
+
 comment on table public.idempotency_ledger is
   'Nexus control-plane idempotency metadata only. Never stores business payloads or message bodies.';
 
@@ -36,7 +41,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   existing public.idempotency_ledger%rowtype;
