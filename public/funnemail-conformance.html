@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TMWE · Conformance Mail</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;--bg:#f5f6f7;--panel:#fff;--line:#e4e7ec;--ink:#17202a;--muted:#667085;--ok:#067647;--bad:#b42318}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}main{max-width:980px;margin:auto;padding:28px}a{color:inherit}.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.ey{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}h1{margin:5px 0 8px;font-size:30px}.sub{color:var(--muted);font-size:13px;max-width:700px}.btn{border:0;border-radius:10px;padding:10px 14px;background:#17202a;color:#fff;font-weight:750;cursor:pointer}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:18px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}.metric b{font-size:26px}.muted{color:var(--muted);font-size:12px}.check{display:grid;grid-template-columns:1.3fr .5fr .7fr .7fr;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px}.check:last-child{border-bottom:0}.pass{color:var(--ok);font-weight:800}.fail{color:var(--bad);font-weight:800}.notice{margin-top:12px;color:var(--muted);font-size:12px}.links{display:flex;gap:12px;font-size:12px;margin-bottom:18px}@media(max-width:700px){.summary{grid-template-columns:1fr 1fr}.check{grid-template-columns:1fr .5fr}.hash{display:none}.head{display:block}.btn{margin-top:14px}}
+</style>
+</head>
+<body><main>
+<div class="links"><a href="/system.html">← Amministrazione</a><a href="/funnemail.html">Mail</a></div>
+<div class="head"><div><div class="ey">TMWE Nexus · Administration</div><h1>Conformance Mail</h1><div class="sub">Confronto read-only tra boundary Nexus e compatibility path usando lo stesso utente. Non invia mail, non modifica messaggi e non mostra contenuti.</div></div><button id="run" class="btn">Esegui confronto</button></div>
+<div class="summary"><div class="metric"><b id="score">–</b><div class="muted">score read-only</div></div><div class="metric"><b id="passed">–</b><div class="muted">check PASS</div></div><div class="metric"><b id="total">–</b><div class="muted">check totali</div></div><div class="metric"><b id="status">–</b><div class="muted">stato</div></div></div>
+<div class="panel"><div id="rows" class="muted">Accedi prima a Mail, poi esegui il confronto.</div><div id="notice" class="notice"></div></div>
+</main><script>
+const SKEY='nexus.funnemail.session.v1';
+const esc=v=>String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+const session=()=>{try{return JSON.parse(localStorage.getItem(SKEY)||'null')}catch{return null}};
+async function run(){const s=session();if(!s?.access_token){notice.textContent='Sessione Mail assente. Apri Mail, effettua l’accesso e torna qui.';return}run.disabled=true;notice.textContent='Confronto in corso…';rows.innerHTML='';try{const r=await fetch('/api/funnemail/conformance',{headers:{'x-funnemail-access-token':s.access_token},cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.note||d.message||d.error||r.statusText);score.textContent=(d.score??0)+'%';passed.textContent=d.passed??0;total.textContent=d.total??0;status.textContent=d.all_passed?'PASS':'CHECK';rows.innerHTML=(d.checks||[]).map(x=>`<div class="check"><div>${esc(x.name)}</div><div class="${x.pass?'pass':'fail'}">${x.pass?'PASS':'FAIL'}</div><div class="hash">${esc(String(x.boundary_hash||'').slice(0,12))}</div><div class="hash">${esc(String(x.compatibility_hash||'').slice(0,12))}</div></div>`).join('')||'<div class="muted">Nessun check restituito.</div>';notice.textContent=d.all_passed?'Tutti i confronti read-only coincidono.':'Esistono differenze: non autorizzare il cutover finché non sono spiegate.'}catch(e){status.textContent='BLOCKED';notice.textContent=e.message;rows.innerHTML='<div class="muted">Conformance non eseguibile con la configurazione corrente.</div>'}finally{run.disabled=false}}
+document.getElementById('run').addEventListener('click',run);
+</script></body></html>
