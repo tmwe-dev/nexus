@@ -28,7 +28,7 @@ const CAPABILITIES = Object.freeze([
   { name:'email.task.create.v2', owner:'funnemail', route:'/api/email/tasks', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:true },
   { name:'email.senders.v1', owner:'funnemail', route:'/api/email/senders', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
   { name:'email.rules.v1', owner:'funnemail', route:'/api/email/rules', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
-  { name:'email.rules.apply.v1', owner:'funnemail', route:'/api/email/rules', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:false },
+  { name:'email.rules.apply.v1', owner:'funnemail', route:'/api/email/rules', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:true },
   { name:'email.compose.v2', owner:'funnemail', route:'/api/email/compose', method:'POST', scope:'email:write', status:'compatibility', side_effects:false, idempotency_required:false },
   { name:'email.sender-intel.v1', owner:'funnemail', route:'/api/email/enrich', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
   { name:'email.enrich.v1', owner:'funnemail', route:'/api/email/enrich', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:true },
