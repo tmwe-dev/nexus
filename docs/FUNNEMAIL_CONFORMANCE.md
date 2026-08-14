@@ -16,48 +16,69 @@ Future integration source is held in `services/funnemail-boundary/` inside Nexus
 
 PASS for deployment existence.
 
-Supabase directly reports:
-
-- function `funnemail-nexus-v1`;
-- deployed version `6`;
-- status `ACTIVE`;
-- explicit custom authentication model (`verify_jwt=false` with boundary-side user validation).
+Supabase directly reports function `funnemail-nexus-v1`, deployed version `6`, status `ACTIVE`, with explicit boundary-side user validation.
 
 ### Nexus routing
 
 PASS structurally for every normal simplified Mail operator action listed in `docs/OPERATOR_ROUTE_MAP.md`.
 
-The Funnemail target has a canonical public registry default, so target selection does not depend on an unverified Vercel environment variable. Environment configuration may override the target but is not required for the normal target URL.
+The Funnemail target has a canonical public registry default. `email.reclassify.v1` was repaired: Nexus no longer references the missing `funnemail-reclassify-now` function and no longer routes delegated users into the service-role-only batch selector. Exact requested IDs are classified through the canonical `/classify` boundary.
 
-`email.reclassify.v1` has also been repaired. The previous route referenced a missing `funnemail-reclassify-now` function and could send explicit user message IDs into a service-role-only batch function whose own selection logic did not honor those IDs. Nexus now reclassifies the exact requested message IDs through the canonical `/classify` boundary path.
+### Idempotency intent and wrappers
 
-### Browser idempotency intent
+PASS structurally, but durable enforcement remains blocked until the Control Plane exists.
 
-PASS structurally for intentional:
+The Mail browser sends an `Idempotency-Key` for intentional:
 
 - Send;
 - Draft Create;
-- Sync.
+- Sync;
+- Task Create;
+- Classify;
+- Enrichment.
 
-The simplified Mail UI creates an `Idempotency-Key` per intentional action and preserves it through a session-refresh retry.
+The corresponding Nexus APIs use the durable-ledger wrapper where required. `email.reclassify.v1` is also ledger-wrapped for API callers. Rule application is ledger-wrapped in the API even though it is not exposed as a normal operator action.
+
+An authentication-refresh retry preserves the original request options and therefore the same idempotency key.
 
 ### Durable idempotency
 
 BLOCKED / NOT PASS.
 
-The durable control-plane migration exists, but no dedicated Nexus Control Plane database has yet been explicitly provisioned. Do not mark this gate complete and do not switch enforce mode on.
+The control-plane migration exists and was hardened before deployment:
+
+- table access is explicitly revoked from `PUBLIC`, `anon` and `authenticated`;
+- only `service_role` receives ledger table privileges;
+- the claim function is executable only by `service_role`;
+- the SECURITY DEFINER function uses an explicit `public, pg_temp` search path;
+- the ledger stores metadata/hash/result references, never message bodies/business payloads.
+
+No dedicated Nexus Control Plane project has yet been explicitly provisioned. Do not switch enforce mode on until the store and server-side credentials are live and verified.
+
+### Authenticated read-only conformance runner
+
+IMPLEMENTED, execution pending a valid browser Mail session plus rollback-adapter configuration.
+
+- API: `GET /api/funnemail/conformance`
+- Admin page: `/funnemail-conformance.html`
+- requires a verified Funnemail user session;
+- performs read-only comparisons only;
+- compares auth identity, first 50 messages using a stable projection, dashboard, drafts, tasks and rules;
+- returns hashes/counts/PASS-FAIL, not message bodies/content.
+
+This creates a repeatable evidence mechanism without mutating original data.
 
 ### Runtime authenticated comparison
 
-NOT YET PROVED.
+NOT YET EXECUTED.
 
-No authenticated Funnemail user session has been supplied to this execution environment for safe read-side old-vs-boundary comparison. Therefore runtime equality evidence remains outstanding even though route and implementation equivalence are structurally mapped.
+The runner exists, but this agent execution does not possess a user's Funnemail session token. A green runtime score is therefore not fabricated.
 
 ### Side-effect conformance
 
 NOT YET PROVED.
 
-No destructive/side-effect shadow calls were issued merely to obtain a green score. Send, Sync, status mutations, draft actions, task create, rule application, enrichment and classification mutations require controlled evidence appropriate to their semantics.
+No destructive/side-effect shadow calls were issued merely to obtain a green score. Send, Sync, status mutations, draft actions, task creation, rules application, enrichment and classification mutations require controlled evidence appropriate to their semantics.
 
 ### Rollback
 
@@ -69,51 +90,54 @@ Compatibility adapters remain in Nexus. Runtime target errors do not silently fa
 
 PARTIAL.
 
-- Vercel Git integration reports successful builds for the working branch checkpoints.
-- Supabase reports the boundary deployment ACTIVE.
-- Funnemail service client exposes in-memory circuit-breaker state.
-- Dedicated durable control-plane observability remains blocked with the Control Plane database.
+- Vercel Git integration validates branch builds;
+- Supabase reports the boundary deployment ACTIVE;
+- Funnemail service client exposes circuit-breaker state;
+- conformance now has a repeatable read-only runner;
+- durable control-plane observability remains blocked until provisioning.
 
 ## Migration-gate scoring
 
-`modules/migration/capabilityMap.js` now tracks the complete Funnemail capability surface exposed by the Nexus Mail APIs rather than only the original six capabilities.
+`modules/migration/capabilityMap.js` tracks the complete Funnemail capability surface exposed by Nexus Mail APIs.
 
-The intentionally conservative current score for these capabilities is **40/100**:
+The intentionally conservative current score remains **40/100** until real runtime evidence exists:
 
 - contract compatibility: 25/25;
 - shadow/conformance: 0/25;
-- callers migrated: 0/20 until global active-caller evidence is complete;
+- callers migrated: 0/20 until active-caller evidence is complete;
 - rollback ready: 15/15;
 - observability ready: 0/15 until per-capability/runtime evidence is complete.
 
-A score of 40 is **not** a failure of the boundary; it means deprecation is correctly blocked until evidence exists. Only 100/100 authorizes legacy removal.
+Only 100/100 authorizes legacy removal.
 
 ## Capability checkpoint
 
-| Capability group | Contract/route | Boundary preferred | Authenticated runtime conformance | Safe to deprecate legacy |
+| Capability group | Contract/route | Boundary preferred | Runtime conformance | Safe to deprecate legacy |
 |---|---:|---:|---:|---:|
-| Auth login/refresh/user | PASS | PASS | NOT PROVED | NO |
-| Message search/read | PASS | PASS | NOT PROVED | NO |
-| Dashboard | PASS | PASS | NOT PROVED | NO |
+| Auth login/refresh/user | PASS | PASS | RUNNER READY | NO |
+| Message search/read | PASS | PASS | RUNNER READY | NO |
+| Dashboard | PASS | PASS | RUNNER READY | NO |
 | Message status | PASS | PASS | NOT PROVED | NO |
-| Draft list/create/safe action | PASS | PASS | NOT PROVED | NO |
-| Send | PASS | PASS | NOT PROVED + durable idempotency blocked | NO |
-| Sync | PASS | PASS | NOT PROVED + durable idempotency blocked | NO |
-| Classify | PASS | PASS | NOT PROVED | NO |
-| Reclassify explicit IDs | PASS | PASS through `/classify` | NOT PROVED | NO |
-| Tasks list/create | PASS | PASS | NOT PROVED | NO |
-| Senders | PASS | PASS | NOT PROVED | NO |
-| Rules | PASS | PASS | NOT PROVED | NO |
-| Compose | PASS | PASS | NOT PROVED | NO |
-| Enrichment | PASS | PASS | NOT PROVED | NO |
+| Draft list | PASS | PASS | RUNNER READY | NO |
+| Draft create/safe action | PASS | PASS | NOT PROVED | NO |
+| Send | PASS | PASS | durable store blocked | NO |
+| Sync | PASS | PASS | durable store blocked | NO |
+| Classify/Reclassify | PASS | PASS | durable store + mutation evidence blocked | NO |
+| Tasks list | PASS | PASS | RUNNER READY | NO |
+| Task create | PASS | PASS | durable store + mutation evidence blocked | NO |
+| Senders | PASS | PASS | structural only | NO |
+| Rules list | PASS | PASS | RUNNER READY | NO |
+| Rule apply | PASS | PASS | mutation evidence blocked | NO |
+| Compose | PASS | PASS | structural only | NO |
+| Enrichment | PASS | PASS | durable store + mutation evidence blocked | NO |
 
 ## Current conclusion
 
-The **routing/extraction portion of the Funnemail phase is complete**: normal Mail actions prefer the Nexus-owned boundary and the remaining historical bug in `reclassify` has been removed from the preferred path.
+The **routing/extraction and idempotency-preparation portion of the Funnemail phase is complete**. Normal Mail actions prefer the Nexus-owned boundary, reclassification routing is fixed, retry-sensitive writes are ledger-ready, and a read-only conformance runner now exists.
 
-The phase is **not yet eligible for legacy deletion or production cutover** because two independent evidence blocks remain:
+Two external evidence blocks still prevent legacy deletion/production cutover:
 
-1. authenticated runtime conformance / active-caller evidence;
-2. durable Nexus Control Plane idempotency.
+1. authenticated execution of conformance and active-caller evidence;
+2. provisioning/configuration of the dedicated Nexus Control Plane for durable idempotency.
 
 Neither blocker is bypassed or hidden to manufacture a 100/100 score.
