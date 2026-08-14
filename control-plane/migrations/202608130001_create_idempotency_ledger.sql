@@ -1,4 +1,11 @@
-create table if not exists public.idempotency_ledger (
+create schema if not exists nexus_control_plane;
+
+revoke all on schema nexus_control_plane from public;
+revoke all on schema nexus_control_plane from anon;
+revoke all on schema nexus_control_plane from authenticated;
+grant usage on schema nexus_control_plane to service_role;
+
+create table if not exists nexus_control_plane.idempotency_ledger (
   capability text not null,
   actor_key text not null,
   idempotency_key text not null,
@@ -13,17 +20,19 @@ create table if not exists public.idempotency_ledger (
 );
 
 create index if not exists idempotency_ledger_expires_at_idx
-  on public.idempotency_ledger (expires_at);
+  on nexus_control_plane.idempotency_ledger (expires_at);
 
-alter table public.idempotency_ledger enable row level security;
+alter table nexus_control_plane.idempotency_ledger enable row level security;
 
-revoke all on table public.idempotency_ledger from public;
-revoke all on table public.idempotency_ledger from anon;
-revoke all on table public.idempotency_ledger from authenticated;
-grant select, insert, update, delete on table public.idempotency_ledger to service_role;
+revoke all on table nexus_control_plane.idempotency_ledger from public;
+revoke all on table nexus_control_plane.idempotency_ledger from anon;
+revoke all on table nexus_control_plane.idempotency_ledger from authenticated;
+grant select, insert, update, delete on table nexus_control_plane.idempotency_ledger to service_role;
 
-comment on table public.idempotency_ledger is
-  'Nexus control-plane idempotency metadata only. Never stores business payloads or message bodies.';
+comment on schema nexus_control_plane is
+  'Dedicated TMWE Nexus control-plane storage. Not an operational Funnemail schema.';
+comment on table nexus_control_plane.idempotency_ledger is
+  'Nexus idempotency metadata only. Never stores business payloads or message bodies.';
 
 create or replace function public.nexus_idempotency_claim(
   p_capability text,
@@ -41,13 +50,13 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = nexus_control_plane, public, pg_temp
 as $$
 declare
-  existing public.idempotency_ledger%rowtype;
+  existing nexus_control_plane.idempotency_ledger%rowtype;
   affected_rows integer := 0;
 begin
-  insert into public.idempotency_ledger (
+  insert into nexus_control_plane.idempotency_ledger (
     capability, actor_key, idempotency_key, request_hash, state, expires_at
   ) values (
     p_capability,
@@ -62,7 +71,7 @@ begin
   get diagnostics affected_rows = row_count;
 
   select * into existing
-  from public.idempotency_ledger
+  from nexus_control_plane.idempotency_ledger
   where capability = p_capability
     and actor_key = p_actor_key
     and idempotency_key = p_idempotency_key
@@ -88,7 +97,7 @@ begin
     return;
   end if;
 
-  update public.idempotency_ledger
+  update nexus_control_plane.idempotency_ledger
   set state = 'pending',
       request_hash = p_request_hash,
       result_ref = null,
@@ -104,7 +113,63 @@ begin
 end;
 $$;
 
+create or replace function public.nexus_idempotency_complete(
+  p_capability text,
+  p_actor_key text,
+  p_idempotency_key text,
+  p_request_hash text,
+  p_result_ref text default null,
+  p_response_status integer default 200
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = nexus_control_plane, public, pg_temp
+as $$
+declare
+  affected_rows integer := 0;
+begin
+  update nexus_control_plane.idempotency_ledger
+  set state = 'completed',
+      result_ref = nullif(left(coalesce(p_result_ref,''), 500), ''),
+      response_status = p_response_status,
+      updated_at = now()
+  where capability = p_capability
+    and actor_key = p_actor_key
+    and idempotency_key = p_idempotency_key
+    and request_hash = p_request_hash
+    and state = 'pending';
+
+  get diagnostics affected_rows = row_count;
+  return affected_rows = 1;
+end;
+$$;
+
+create or replace function public.nexus_idempotency_probe()
+returns table (ledger_rows bigint, pending_rows bigint, completed_rows bigint)
+language sql
+security definer
+set search_path = nexus_control_plane, public, pg_temp
+as $$
+  select
+    count(*)::bigint,
+    count(*) filter (where state = 'pending')::bigint,
+    count(*) filter (where state = 'completed')::bigint
+  from nexus_control_plane.idempotency_ledger
+  where expires_at > now();
+$$;
+
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from public;
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from anon;
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from authenticated;
 grant execute on function public.nexus_idempotency_claim(text,text,text,text,integer) to service_role;
+
+revoke all on function public.nexus_idempotency_complete(text,text,text,text,text,integer) from public;
+revoke all on function public.nexus_idempotency_complete(text,text,text,text,text,integer) from anon;
+revoke all on function public.nexus_idempotency_complete(text,text,text,text,text,integer) from authenticated;
+grant execute on function public.nexus_idempotency_complete(text,text,text,text,text,integer) to service_role;
+
+revoke all on function public.nexus_idempotency_probe() from public;
+revoke all on function public.nexus_idempotency_probe() from anon;
+revoke all on function public.nexus_idempotency_probe() from authenticated;
+grant execute on function public.nexus_idempotency_probe() to service_role;
