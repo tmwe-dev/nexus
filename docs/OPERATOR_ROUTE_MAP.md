@@ -65,9 +65,19 @@ Authentication is delegated to Funnemail Auth. Mailbox/data operations continue 
 | Senders | `GET /api/email/senders` | boundary `/senders` | CANONICAL |
 | Rules | `GET/POST /api/email/rules` | boundary `/rules` | CANONICAL |
 | Enrichment / sender intel | `GET/POST /api/email/enrich` | boundary `/enrich` | CANONICAL |
-| Riclassifica | `POST /api/email/reclassify` | existing Funnemail reclassify Edge functions through compatibility adapter | COMPATIBILITY |
 
 The browser generates a new `Idempotency-Key` for each intentional Draft Create, Send and Sync action and preserves that same request key across an authentication-refresh retry.
+
+### Additional Mail API route
+
+`POST /api/email/reclassify` is now also boundary-preferred. It no longer calls the removed `funnemail-reclassify-now` route and no longer sends a delegated user request to the service-role-only batch endpoint.
+
+- single explicit message → boundary `/classify` for that exact `message_id`;
+- explicit `message_ids[]` batch → one boundary `/classify` call per requested message;
+- duplicate IDs are removed before execution;
+- the rollback-only compatibility path uses the same existing `funnemail-classify` behavior rather than the missing historical single-message function.
+
+This fixes the prior routing bug where the batch path could ignore the caller's explicit message IDs and select unrelated messages by its own batch criteria.
 
 ### Residual compatibility not in the primary simplified UI
 
@@ -76,7 +86,7 @@ The browser generates a new `Idempotency-Key` for each intentional Draft Create,
 - diagnostic/self-test routes;
 - legacy fallbacks retained for rollback until migration gates pass.
 
-`Riclassifica` is the only currently visible operator action that still prefers a compatibility route. It must not be deleted; migrate it only by preserving the exact semantics of `funnemail-reclassify-now` / `funnemail-reclassify-batch` and proving conformance.
+No normal simplified Mail action now prefers a direct legacy/private-database route.
 
 ## Resilience
 
