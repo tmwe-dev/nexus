@@ -159,6 +159,69 @@ as $$
   where expires_at > now();
 $$;
 
+create or replace function public.nexus_user_idempotency_claim(
+  p_capability text,
+  p_idempotency_key text,
+  p_request_hash text,
+  p_ttl_seconds integer default 86400
+)
+returns table (
+  decision text,
+  current_state text,
+  current_result_ref text,
+  current_response_status integer,
+  current_request_hash text
+)
+language plpgsql
+security definer
+set search_path = nexus_control_plane, public, pg_temp
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'authentication_required' using errcode = '28000';
+  end if;
+  return query
+  select * from public.nexus_idempotency_claim(
+    p_capability,
+    'user:' || uid::text,
+    p_idempotency_key,
+    p_request_hash,
+    p_ttl_seconds
+  );
+end;
+$$;
+
+create or replace function public.nexus_user_idempotency_complete(
+  p_capability text,
+  p_idempotency_key text,
+  p_request_hash text,
+  p_result_ref text default null,
+  p_response_status integer default 200
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = nexus_control_plane, public, pg_temp
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'authentication_required' using errcode = '28000';
+  end if;
+  return public.nexus_idempotency_complete(
+    p_capability,
+    'user:' || uid::text,
+    p_idempotency_key,
+    p_request_hash,
+    p_result_ref,
+    p_response_status
+  );
+end;
+$$;
+
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from public;
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from anon;
 revoke all on function public.nexus_idempotency_claim(text,text,text,text,integer) from authenticated;
@@ -173,3 +236,11 @@ revoke all on function public.nexus_idempotency_probe() from public;
 revoke all on function public.nexus_idempotency_probe() from anon;
 revoke all on function public.nexus_idempotency_probe() from authenticated;
 grant execute on function public.nexus_idempotency_probe() to service_role;
+
+revoke all on function public.nexus_user_idempotency_claim(text,text,text,integer) from public;
+revoke all on function public.nexus_user_idempotency_claim(text,text,text,integer) from anon;
+grant execute on function public.nexus_user_idempotency_claim(text,text,text,integer) to authenticated;
+
+revoke all on function public.nexus_user_idempotency_complete(text,text,text,text,integer) from public;
+revoke all on function public.nexus_user_idempotency_complete(text,text,text,text,integer) from anon;
+grant execute on function public.nexus_user_idempotency_complete(text,text,text,text,integer) to authenticated;
