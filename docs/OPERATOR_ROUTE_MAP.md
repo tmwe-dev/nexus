@@ -2,90 +2,115 @@
 
 `RULES.md` is authoritative.
 
-Purpose: map every action visible in the normal Nexus operator UI to its current execution path so routing can be simplified without deleting working behavior.
+Purpose: map every action visible in the normal Nexus operator UI to its preferred execution path without deleting rollback behavior prematurely.
 
 Status meanings:
 
-- **CANONICAL** — action already uses a Nexus-owned stable service/capability path as its preferred route.
-- **MIGRATION** — action is intentionally served through a read/compatibility adapter while the original remains source of truth.
-- **COMPATIBILITY** — action still reaches Funnemail/legacy internals through a temporary adapter and needs a stable replacement contract before that adapter can be removed.
+- **CANONICAL** — Nexus prefers a stable Nexus-owned boundary/capability path.
+- **MIGRATION** — original remains source of truth while Nexus normalizes/shadows it.
+- **COMPATIBILITY** — still prefers a legacy/compatibility path and must be migrated before deprecation.
 - **STATIC** — no business-service call.
 
 ## Home
 
-| Visible action | UI target | Current route | Status | Required next step |
-|---|---|---|---|---|
-| Mail | `/funnemail.html` | static navigation | STATIC | none |
-| CRM | `/crm.html` | static navigation | STATIC | none |
-| Aziende | `/companies.html` | static navigation | STATIC | none |
-| Amministrazione | `/system.html` | technical/admin page | STATIC | keep outside normal workflow |
-| Navigator | disabled/future | none | STATIC | expose only when a real Nexus route exists |
-| Cobra | disabled/future | none | STATIC | expose only when a real operator contract exists |
-| BarTalk | disabled/future | none | STATIC | expose only when a real operator contract exists |
+| Visible action | UI target | Status |
+|---|---|---|
+| Mail | `/funnemail.html` | STATIC |
+| CRM | `/crm.html` | STATIC |
+| Aziende | `/companies.html` | STATIC |
+| Amministrazione | `/system.html` | STATIC |
+| Navigator | future | STATIC |
+| Cobra | future | STATIC |
+| BarTalk | future | STATIC |
+
+Technical/system information stays under Administration and is not part of the normal operator workflow.
+
+## Funnemail canonical target
+
+Canonical Nexus-owned source: `services/funnemail-boundary/index.ts`.
+
+Deployed owner boundary: `funnemail-nexus-v1` on the Funnemail Supabase project.
+
+The public non-secret boundary URL is defined once in `registry/connections.js` as `targetDefaultBase`. `FUNNEMAIL_BASE_URL` is an optional environment override, not a normal production requirement.
+
+The old `NEXUS_FUNNEMAIL_SUPABASE_URL`, `NEXUS_FUNNEMAIL_ANON_KEY` and related adapter configuration are rollback-only compatibility settings. They are not the preferred Mail route.
 
 ## Mail — authentication
 
-| Visible action | Nexus API | Current execution | Status | Required next step |
-|---|---|---|---|---|
-| Accedi | `POST /api/funnemail/login` | Funnemail auth through `legacyAdapter.login` | COMPATIBILITY | define auth boundary separately from mailbox capability routing; do not expose secrets |
-| Refresh session | `POST /api/funnemail/refresh` | Funnemail auth compatibility path | COMPATIBILITY | keep until delegated-user auth entrypoint is canonicalized |
-| Current user | `GET /api/funnemail/user` | verified Funnemail user context | COMPATIBILITY | preserve user-scoped RLS semantics |
+| Visible action | Nexus API | Preferred execution | Status |
+|---|---|---|---|
+| Accedi | `POST /api/funnemail/login` | `funnemail-nexus-v1 /auth/login` | CANONICAL |
+| Refresh session | `POST /api/funnemail/refresh` | `funnemail-nexus-v1 /auth/refresh` | CANONICAL |
+| Current user | `GET /api/funnemail/user` | `funnemail-nexus-v1 /auth/user` | CANONICAL |
+
+Authentication is delegated to Funnemail Auth. Mailbox/data operations continue to use the verified Funnemail user JWT and preserve user-scoped RLS. No service-role key is exposed to the browser.
 
 ## Mail — primary operator path
 
-| Visible action | Nexus API | Preferred execution | Status | Required next step |
-|---|---|---|---|---|
-| Inbox/search | `GET /api/email/messages` | `funnemail-nexus-v1 /messages` when target configured; compatibility fallback otherwise | CANONICAL | prove configured target in deployed Nexus; keep fallback until gates pass |
-| Read message | `GET /api/email/message` | `funnemail-nexus-v1 /messages/:id` when target configured; compatibility fallback otherwise | CANONICAL | same as above |
-| Unread/draft counters | `GET /api/email/dashboard` | `funnemail-nexus-v1 /dashboard` when target configured; compatibility fallback otherwise | CANONICAL | verify live target configuration and conformance |
-| Mark read/unread | `POST /api/email/status` | `funnemail-nexus-v1 /status` when target configured; compatibility fallback otherwise | CANONICAL | verify DB + IMAP behavior against compatibility path before removing fallback |
-| Archive/trash/flag | `POST /api/email/status` | `funnemail-nexus-v1 /status` when target configured; compatibility fallback otherwise | CANONICAL | same conformance/rollback requirement |
-| Save draft | `POST /api/email/drafts` | idempotency ledger wrapper → `funnemail-nexus-v1 /drafts` when target configured | CANONICAL | activate durable ledger before enforce mode |
-| Send | `POST /api/email/send` | idempotency ledger wrapper → `funnemail-nexus-v1 /send` when target configured | CANONICAL | activate durable ledger before enforce mode |
-| Sync | `POST /api/email/sync` | idempotency ledger wrapper → `funnemail-nexus-v1 /sync` when target configured | CANONICAL | activate durable ledger before enforce mode |
-| Classify | `POST /api/email/classify` | `funnemail-nexus-v1 /classify` when target configured | CANONICAL | decide whether classification remains Funnemail-owned or moves to shared AI later |
+| Visible action | Nexus API | Preferred execution | Status |
+|---|---|---|---|
+| Inbox/search | `GET /api/email/messages` | boundary `/messages` | CANONICAL |
+| Read message | `GET /api/email/message` | boundary `/messages/:id` | CANONICAL |
+| Counters | `GET /api/email/dashboard` | boundary `/dashboard` | CANONICAL |
+| Read/unread | `POST /api/email/status` | boundary `/status` | CANONICAL |
+| Archive/trash/flag | `POST /api/email/status` | boundary `/status` | CANONICAL |
+| List drafts | `GET /api/email/drafts` | boundary `/drafts` | CANONICAL |
+| Save draft | `POST /api/email/drafts` | idempotency wrapper → boundary `/drafts` | CANONICAL |
+| Approve/discard draft | `POST /api/email/draft-action` | boundary `/drafts/:id/action` | CANONICAL |
+| Send | `POST /api/email/send` | idempotency wrapper → boundary `/send` | CANONICAL |
+| Sync | `POST /api/email/sync` | idempotency wrapper → boundary `/sync` | CANONICAL |
+| Classify | `POST /api/email/classify` | boundary `/classify` | CANONICAL |
+| AI writing assistance | `POST /api/email/compose` | boundary `/compose` | CANONICAL |
+| List/create tasks | `GET/POST /api/email/tasks` | boundary `/tasks` | CANONICAL |
+| Senders | `GET /api/email/senders` | boundary `/senders` | CANONICAL |
+| Rules | `GET/POST /api/email/rules` | boundary `/rules` | CANONICAL |
+| Enrichment / sender intel | `GET/POST /api/email/enrich` | boundary `/enrich` | CANONICAL |
+| Riclassifica | `POST /api/email/reclassify` | existing Funnemail reclassify Edge functions through compatibility adapter | COMPATIBILITY |
 
-The browser generates a new `Idempotency-Key` for each intentional Draft Create, Send and Sync action and preserves the same request options across a 401/session-refresh retry.
+The browser generates a new `Idempotency-Key` for each intentional Draft Create, Send and Sync action and preserves that same request key across an authentication-refresh retry.
 
-## Mail — visible compatibility functions
+### Residual compatibility not in the primary simplified UI
 
-| Visible action | Nexus API | Current execution | Status | Required next step |
-|---|---|---|---|---|
-| List drafts | `GET /api/email/drafts` | compatibility read from Funnemail draft storage | COMPATIBILITY | extend stable draft capability to list/read |
-| Approve/discard draft | `POST /api/email/draft-action` | compatibility Funnemail operation | COMPATIBILITY | define stable draft-action command if behavior remains Funnemail-owned |
-| AI writing assistance | `POST /api/email/compose` | existing Funnemail Edge function through compatibility adapter | COMPATIBILITY | determine final owner: Funnemail email intelligence vs shared AI platform |
-| List/create tasks | `GET/POST /api/email/tasks` | compatibility Funnemail task storage/RPC | COMPATIBILITY | decide task ownership, then expose stable contract |
-| Senders | `GET /api/email/senders` | compatibility Funnemail sender intelligence | COMPATIBILITY | expose only if operator value justifies a stable capability |
-| Rules | `GET /api/email/rules` | compatibility Funnemail rules storage | COMPATIBILITY | keep under secondary UI; define stable contract only if retained |
-| Enrichment | `POST /api/email/enrich` | existing Funnemail Edge operation through compatibility adapter | COMPATIBILITY | decide final owner with AI/research architecture |
+- task PATCH/DELETE;
+- draft action `send` (separate from normal compose/send and intentionally retained until dedicated idempotency is in place);
+- diagnostic/self-test routes;
+- legacy fallbacks retained for rollback until migration gates pass.
 
-**Rule:** none of these compatibility adapters may be deleted merely because the UI has been simplified. Delete only after replacement contract, conformance, caller migration, rollback and observability gates pass.
+`Riclassifica` is the only currently visible operator action that still prefers a compatibility route. It must not be deleted; migrate it only by preserving the exact semantics of `funnemail-reclassify-now` / `funnemail-reclassify-batch` and proving conformance.
+
+## Resilience
+
+`modules/funnemail/serviceClient.js` is routed through the Nexus circuit breaker:
+
+- opens after 3 consecutive boundary failures;
+- resets/half-opens after 30 seconds;
+- request timeout defaults to 12 seconds;
+- runtime failure does not silently switch to a legacy database path.
+
+This avoids cascading retries while keeping rollback explicit and controlled.
 
 ## CRM
 
-Current CRM reads are migration paths by design. The original Navigator data remains source of truth while Nexus normalizes identity and can shadow/read from the independent Nexus store.
+Current CRM reads remain migration paths. Navigator/original datasets remain sources of truth while Nexus normalizes identity and prepares an independent store.
 
-| Visible action | Nexus API | Current execution | Status | Required next step |
-|---|---|---|---|---|
-| Search contacts | `GET /api/crm/contacts` | CRM service → Navigator read adapter → mapper/identity resolver | MIGRATION | continue shadow/read-router migration; do not modify Navigator original |
-| Search companies/accounts | `GET /api/crm/accounts` | CRM service → current source adapter/read-router model | MIGRATION | establish independent-store readiness before cutover |
-| Pipeline/opportunities | `GET /api/crm/pipeline` | CRM aggregation over current migration sources | MIGRATION | verify one canonical opportunity owner/source |
-| Contact detail | `GET /api/crm/contact-detail` | CRM detail service/read routing | MIGRATION | preserve identity mapping and shadow comparison |
-| Contact activities | `GET /api/crm/activities` | CRM activities service | MIGRATION | confirm activity source/owner before write features are exposed |
+| Visible action | Nexus API | Current execution | Status |
+|---|---|---|---|
+| Search contacts | `GET /api/crm/contacts` | CRM service → Navigator read adapter → mapper/identity resolver | MIGRATION |
+| Search companies/accounts | `GET /api/crm/accounts` | CRM migration/read-router model | MIGRATION |
+| Pipeline/opportunities | `GET /api/crm/pipeline` | CRM aggregation over current migration sources | MIGRATION |
+| Contact detail | `GET /api/crm/contact-detail` | CRM detail/read routing | MIGRATION |
+| Contact activities | `GET /api/crm/activities` | CRM activities service | MIGRATION |
+
+Do not modify Navigator original files to accelerate this migration.
 
 ## Aziende
 
-| Visible action | Nexus API | Current execution | Status | Required next step |
-|---|---|---|---|---|
-| Search companies | `GET /api/companies` | Nexus company-registry service | CANONICAL | verify backing store/config in deployed environment |
+| Visible action | Nexus API | Current execution | Status |
+|---|---|---|---|
+| Search companies | `GET /api/companies` | Nexus company-registry service | CANONICAL |
 
-The operator page is read-oriented even though the API also supports writes. No company write control is exposed in the simplified UI until ownership, authorization and business workflow are explicit.
+The simplified page remains read-oriented until ownership, authorization and business workflow for writes are explicit.
 
-## Routing cleanup order
+## Removal rule
 
-1. Keep the simplified UI stable.
-2. Prove the configured Funnemail stable target for all boundary-preferred capabilities.
-3. Extend the boundary for draft list/action because drafts remain part of normal mail behavior.
-4. Decide final ownership for email tasks, AI compose, enrichment, sender intelligence and rules before adding more contracts.
-5. Continue CRM shadow/read-router migration without touching Navigator original files.
-6. Only after conformance/rollback gates pass, remove compatibility paths with zero active callers.
+A compatibility path may be removed only after all migration gates pass: contract compatibility, shadow/conformance, callers migrated, rollback ready and observability ready. Boundary-preferred routing by itself does not authorize deletion of legacy code.
