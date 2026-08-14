@@ -19,6 +19,7 @@ const CONNECTIONS = [
     repository: 'tmwe-dev/funnemail',
     endpointEnv: 'NEXUS_FUNNEMAIL_SUPABASE_URL', tokenEnv: 'NEXUS_FUNNEMAIL_ANON_KEY',
     targetEndpointEnv: 'FUNNEMAIL_BASE_URL',
+    targetDefaultBase: 'https://rxocvyfhsqduowltmfbp.supabase.co/functions/v1/funnemail-nexus-v1',
     targetAuthMode: 'delegated-user-jwt', targetHealthPath: '/health'
   },
   {
