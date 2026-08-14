@@ -13,12 +13,11 @@ function config() {
   return baseUrl && apiKey ? { baseUrl, apiKey } : null;
 }
 
-function headers(apiKey, prefer = 'return=representation') {
+function headers(apiKey) {
   return {
     apikey: apiKey,
     Authorization: `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-    Prefer: prefer
+    'Content-Type': 'application/json'
   };
 }
 
@@ -61,12 +60,32 @@ function error(code, status, message, details = {}) {
   return err;
 }
 
+async function rpc(cfg, name, body = {}) {
+  const response = await fetch(`${cfg.baseUrl}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: headers(cfg.apiKey),
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { response, data };
+}
+
 async function probe() {
   const cfg = config();
   if (!cfg) return { configured:false, reachable:false, mode:mode(), ready:false, reason:'control_plane_not_configured' };
   try {
-    const response = await fetch(`${cfg.baseUrl}/rest/v1/idempotency_ledger?select=capability&limit=1`, { headers:headers(cfg.apiKey, 'return=minimal') });
-    return { configured:true, reachable:response.ok, mode:mode(), ready:response.ok && mode() === 'enforce', status:response.status, reason:response.ok?null:`ledger_http_${response.status}` };
+    const { response, data } = await rpc(cfg, 'nexus_idempotency_probe');
+    return {
+      configured:true,
+      reachable:response.ok,
+      mode:mode(),
+      ready:response.ok && mode() === 'enforce',
+      status:response.status,
+      stats:Array.isArray(data) ? data[0] || null : data,
+      reason:response.ok ? null : `ledger_probe_http_${response.status}`
+    };
   } catch (error) {
     return { configured:true, reachable:false, mode:mode(), ready:false, reason:error.message };
   }
@@ -89,16 +108,12 @@ async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
 
   const actor = actorKey(auth);
   const hash = requestHash(req);
-  const response = await fetch(`${cfg.baseUrl}/rest/v1/rpc/nexus_idempotency_claim`, {
-    method: 'POST',
-    headers: headers(cfg.apiKey),
-    body: JSON.stringify({
-      p_capability: capability,
-      p_actor_key: actor,
-      p_idempotency_key: key,
-      p_request_hash: hash,
-      p_ttl_seconds: Math.max(60, Math.min(Number(ttlSeconds || process.env.NEXUS_IDEMPOTENCY_TTL_SECONDS) || 86400, 604800))
-    })
+  const { response, data } = await rpc(cfg, 'nexus_idempotency_claim', {
+    p_capability: capability,
+    p_actor_key: actor,
+    p_idempotency_key: key,
+    p_request_hash: hash,
+    p_ttl_seconds: Math.max(60, Math.min(Number(ttlSeconds || process.env.NEXUS_IDEMPOTENCY_TTL_SECONDS) || 86400, 604800))
   });
 
   if (!response.ok) {
@@ -106,8 +121,7 @@ async function claim({ req, capability, auth, ttlSeconds, keyOverride }) {
     return { execute:true, durable:false, enforced:false, reason:`claim_http_${response.status}`, capability, key };
   }
 
-  const rows = await response.json();
-  const row = Array.isArray(rows) ? rows[0] : rows;
+  const row = Array.isArray(data) ? data[0] : data;
   if (!row?.decision) throw error('IDEMPOTENCY_CLAIM_INVALID', 503, 'Idempotency claim returned no decision');
 
   const base = { durable:true, enforced:currentMode === 'enforce', capability, key, actor, request_hash:hash };
@@ -132,23 +146,22 @@ async function complete(claimResult, result, responseStatus = 200) {
   const cfg = config();
   if (!cfg) throw error('IDEMPOTENCY_COMMIT_FAILED', 503, 'Idempotency store disappeared after execution', { operation_may_have_completed:true });
 
-  const params = new URLSearchParams({
-    capability: `eq.${claimResult.capability}`,
-    actor_key: `eq.${claimResult.actor}`,
-    idempotency_key: `eq.${claimResult.key}`,
-    request_hash: `eq.${claimResult.request_hash}`
+  const { response, data } = await rpc(cfg, 'nexus_idempotency_complete', {
+    p_capability: claimResult.capability,
+    p_actor_key: claimResult.actor,
+    p_idempotency_key: claimResult.key,
+    p_request_hash: claimResult.request_hash,
+    p_result_ref: inferResultRef(result),
+    p_response_status: responseStatus
   });
-  const response = await fetch(`${cfg.baseUrl}/rest/v1/idempotency_ledger?${params.toString()}`, {
-    method: 'PATCH',
-    headers: headers(cfg.apiKey, 'return=minimal'),
-    body: JSON.stringify({
-      state:'completed',
-      result_ref:inferResultRef(result),
-      response_status:responseStatus,
-      updated_at:new Date().toISOString()
-    })
-  });
-  if (!response.ok) throw error('IDEMPOTENCY_COMMIT_FAILED', 503, `Idempotency completion failed with ${response.status}`, { operation_may_have_completed:true, idempotency_key:claimResult.key });
+
+  const completed = data === true || (Array.isArray(data) && data[0] === true);
+  if (!response.ok || !completed) {
+    throw error('IDEMPOTENCY_COMMIT_FAILED', 503, `Idempotency completion failed with ${response.status}`, {
+      operation_may_have_completed:true,
+      idempotency_key:claimResult.key
+    });
+  }
   return { durable:true };
 }
 
