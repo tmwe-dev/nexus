@@ -122,6 +122,8 @@ Deno.serve(async (req: Request) => {
       contracts: [
         "email.message.search.v1",
         "email.message.read.v1",
+        "email.dashboard.v1",
+        "email.message.status.v1",
         "email.draft.create.v1",
         "email.send.v1",
         "email.sync.v1",
@@ -158,6 +160,71 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ error: "MESSAGE_READ_FAILED" }, 502);
     if (!data) return json({ error: "MESSAGE_NOT_FOUND" }, 404);
     return json({ contract: "email.message.read.v1", data: normalizeMessage(data) });
+  }
+
+  if (req.method === "GET" && resource === "dashboard") {
+    const [messagesResult, draftsResult, sendersResult] = await Promise.all([
+      client.from("channel_messages").select("email_date,read_at,category").eq("channel", "email").eq("direction", "inbound").is("deleted_at", null).limit(2000),
+      client.from("email_drafts").select("status").limit(1000),
+      client.from("funnemail_sender_intel").select("email_domain").limit(1000)
+    ]);
+    if (messagesResult.error) return json({ error: "DASHBOARD_MESSAGES_FAILED" }, 502);
+    const messages = messagesResult.data || [];
+    const drafts = draftsResult.error ? [] : (draftsResult.data || []);
+    const senders = sendersResult.error ? [] : (sendersResult.data || []);
+    const today = new Date().toISOString().slice(0, 10);
+    const categories: Record<string, number> = {};
+    for (const message of messages) {
+      const category = String(message.category || "non classificata");
+      categories[category] = (categories[category] || 0) + 1;
+    }
+    const draftStatus: Record<string, number> = {};
+    for (const draft of drafts) {
+      const status = String(draft.status || "unknown");
+      draftStatus[status] = (draftStatus[status] || 0) + 1;
+    }
+    return json({
+      contract: "email.dashboard.v1",
+      totals: {
+        inbound: messages.length,
+        unread: messages.filter((message) => !message.read_at).length,
+        today: messages.filter((message) => String(message.email_date || "").slice(0, 10) === today).length,
+        drafts: drafts.length,
+        enriched_senders: senders.length
+      },
+      categories,
+      draft_status: draftStatus
+    });
+  }
+
+  if (req.method === "POST" && resource === "status") {
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const id = String(body.message_id || body.id || "").trim();
+    const action = String(body.action || "").toLowerCase();
+    if (!id || !action) return json({ error: "MESSAGE_ID_AND_ACTION_REQUIRED" }, 400);
+
+    if (action === "read" || action === "unread") {
+      const seen = action === "read";
+      const { error } = await client.from("channel_messages").update({ read_at: seen ? new Date().toISOString() : null }).eq("id", id);
+      if (error) return json({ error: "MESSAGE_STATUS_UPDATE_FAILED" }, 502);
+      const upstream = await callExistingEdge(req, "funnemail-imap-mark-seen", { message_ids: [id], seen }, token);
+      if ("error" in upstream) return upstream.error;
+    } else if (action === "trash" || action === "archive") {
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = { message_id: id, user_id: user.id };
+      payload[action === "trash" ? "trashed_at" : "archived_at"] = now;
+      const { error } = await client.from("funnemail_message_status").upsert(payload, { onConflict: "message_id,user_id" });
+      if (error) return json({ error: "MESSAGE_STATUS_UPDATE_FAILED" }, 502);
+      const upstream = await callExistingEdge(req, "funnemail-imap-move", { message_ids: [id], target: action }, token);
+      if ("error" in upstream) return upstream.error;
+    } else if (action === "flag" || action === "unflag") {
+      const flagged = action === "flag";
+      const upstream = await callExistingEdge(req, "funnemail-imap-mark-flag", { message_ids: [id], flagged }, token);
+      if ("error" in upstream) return upstream.error;
+    } else {
+      return json({ error: "UNSUPPORTED_EMAIL_ACTION" }, 400);
+    }
+    return json({ contract: "email.message.status.v1", message_id: id, action, ok: true });
   }
 
   if (req.method === "POST" && resource === "drafts") {
