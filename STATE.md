@@ -16,9 +16,11 @@ Authoritative rules: `RULES.md`.
 
 ## Current phase result
 
-The **Funnemail routing/extraction phase is complete at code level**.
+The **Funnemail routing/extraction phase is complete at code level** and the **Nexus durable idempotency store is now active** inside the existing Funnemail Supabase project, isolated in the dedicated `nexus_control_plane` schema.
 
-Normal Mail actions now prefer the Nexus-owned Funnemail boundary. The phase is not yet authorized for legacy deletion or production cutover because durable Control Plane idempotency and authenticated migration evidence remain deliberately unresolved.
+No new Supabase project was created and no additional project cost was incurred.
+
+Legacy deletion / production cutover is still blocked by authenticated conformance, active-caller evidence and controlled side-effect evidence. Those gates remain intentionally conservative.
 
 ## UI simplification completed
 
@@ -30,16 +32,7 @@ Business-first entry points: Mail, CRM, Aziende. Technical diagnostics stay unde
 
 Primary navigation: Scrivi, Inbox, Bozze. Secondary functions: Mittenti, Task, Regole, Sincronizza.
 
-The browser generates an `Idempotency-Key` for intentional:
-
-- Send;
-- Draft Create;
-- Sync;
-- Task Create;
-- Classify;
-- Enrichment.
-
-The same key is preserved across an authentication-refresh retry.
+The browser generates an `Idempotency-Key` for intentional Send, Draft Create, Sync, Task Create, Classify and Enrichment. The same key is preserved across authentication-refresh retry.
 
 ### CRM / Contact / Companies
 
@@ -59,28 +52,97 @@ Operator pages remain simplified and business-oriented. CRM is still a migration
 
 Boundary-preferred functionality covers auth, messages, dashboard, message status, drafts, send, sync, classification, tasks, senders, rules, compose and enrichment.
 
-The public target URL is defined centrally by `registry/connections.js`; `FUNNEMAIL_BASE_URL` is only an optional override.
-
 ## Reclassify bug fixed
 
-The previous Nexus `api/email/reclassify.js` had two real routing defects:
+The previous Nexus route referenced missing `funnemail-reclassify-now` and could delegate explicit user IDs to `funnemail-reclassify-batch`, which is service-role-only and independently selects messages.
 
-1. it referenced `funnemail-reclassify-now`, which no longer exists;
-2. its batch route could invoke `funnemail-reclassify-batch`, which is service-role-only and independently selects messages rather than honoring explicit user `message_ids`.
-
-The new Nexus route now:
-
-- deduplicates explicit message IDs;
-- single ID → canonical `/classify` boundary;
-- explicit ID array → one canonical `/classify` call per requested ID;
-- rollback compatibility also uses existing `funnemail-classify` per exact ID;
-- is wrapped by Nexus idempotency for API callers.
+The new Nexus route deduplicates explicit IDs and classifies exactly those IDs through canonical `/classify`; rollback compatibility also uses existing `funnemail-classify` per exact ID.
 
 No normal simplified Mail action now prefers a direct legacy/private-database route.
 
-## Idempotency preparation
+## Durable Nexus Control Plane — ACTIVE
 
-Nexus ledger wrappers now cover retry-sensitive Mail mutations including:
+The user chose to reuse the existing Supabase project rather than create a separate paid project.
+
+Isolation model:
+
+- same Supabase project: `rxocvyfhsqduowltmfbp`;
+- dedicated schema: `nexus_control_plane`;
+- operational Funnemail tables remain in their original schemas;
+- Nexus ledger table is not exposed directly to `anon` or `authenticated`;
+- `anon` and `authenticated` have no `USAGE` on the dedicated schema and no direct table privileges;
+- only restricted public RPC entrypoints are exposed.
+
+Migration source:
+
+`control-plane/migrations/202608130001_create_idempotency_ledger.sql`
+
+Applied migrations:
+
+1. `create_nexus_control_plane_schema`
+2. `add_nexus_user_idempotency_rpc`
+
+Ledger table:
+
+`nexus_control_plane.idempotency_ledger`
+
+Stored data is metadata only: capability, actor, idempotency key, request hash, state, result reference/status and timestamps. No message bodies or business payloads are stored.
+
+### Service RPCs
+
+Only `service_role` may execute:
+
+- `public.nexus_idempotency_claim`
+- `public.nexus_idempotency_complete`
+- `public.nexus_idempotency_probe`
+
+### User-scoped RPCs
+
+Authenticated Funnemail users may execute:
+
+- `public.nexus_user_idempotency_claim`
+- `public.nexus_user_idempotency_complete`
+
+These functions derive the actor from `auth.uid()` internally. The caller cannot choose another user actor and cannot directly read the ledger table.
+
+Privilege verification returned:
+
+- anon schema usage: false;
+- authenticated schema usage: false;
+- anon table select: false;
+- authenticated table select: false;
+- anon user-claim execute: false;
+- authenticated user-claim execute: true;
+- authenticated service-claim execute: false.
+
+### Runtime ledger verification
+
+The service-role ledger path passed the complete deterministic sequence:
+
+1. first claim → `execute`;
+2. same key/hash while pending → `in_progress`;
+3. complete → `true`;
+4. same key/hash after completion → `replay`;
+5. same key/different hash → `conflict`.
+
+The test record was deleted afterwards; probe returned zero active test rows.
+
+### Mail idempotency without service secret
+
+`modules/idempotency/ledger.js` now uses the user-scoped RPC path for `funnemail-user` requests:
+
+- public non-secret Control Plane URL/default publishable key;
+- Funnemail user JWT forwarded as bearer token;
+- actor bound to `auth.uid()` inside Postgres;
+- no `service_role` credential required for normal Mail operations.
+
+A server-only `NEXUS_CONTROL_PLANE_KEY` remains optional and is needed only for future server-to-server workflows such as Cobra.
+
+`NEXUS_IDEMPOTENCY_MODE` remains `audit` by default. Requests that carry an `Idempotency-Key` already use durable storage in audit mode; switching to `enforce` additionally rejects missing/unavailable keys. Do not enable broad global enforce until service-to-service actors also have a durable path.
+
+## Idempotency coverage
+
+Nexus ledger wrappers cover retry-sensitive Mail mutations:
 
 - `email.draft.create.v1`;
 - `email.send.v1`;
@@ -89,65 +151,45 @@ Nexus ledger wrappers now cover retry-sensitive Mail mutations including:
 - `email.classify.v1`;
 - `email.reclassify.v1`;
 - `email.enrich.v1`;
-- `email.rules.apply.v1` in the API.
+- `email.rules.apply.v1`.
 
-Database inspection confirmed `fn_create_task_from_mail` is a pure insert and the task table has no uniqueness constraint preventing duplicate task creation, so task idempotency is required rather than cosmetic.
+`registry/capabilities.js` is now aligned: `email.rules.apply.v1` is correctly marked `idempotency_required:true`.
 
-`email.message.status.v1` and safe draft status operations remain state-setting operations and are not treated like send/create commands.
+Database inspection confirmed `fn_create_task_from_mail` is a pure insert and the task table has no uniqueness constraint preventing retry duplicates, so task idempotency is required.
 
-One registry-documentation mismatch remains: the API for `email.rules.apply.v1` is ledger-wrapped, but the attempted GitHub write changing its registry `idempotency_required` flag to true was blocked by the connector safety layer. Rules Apply is not exposed as a normal operator action. Correct that single flag before any future Rules Apply cutover decision.
+## Supabase advisor result for Nexus schema
 
-## Control Plane migration hardening
+Security advisor reports one INFO item specific to Nexus: RLS enabled with no policy on `nexus_control_plane.idempotency_ledger`. This is intentional because direct table access is revoked and all access goes through restricted SECURITY DEFINER RPCs.
 
-Migration file:
-
-`control-plane/migrations/202608130001_create_idempotency_ledger.sql`
-
-was hardened before deployment:
-
-- explicit RLS enabled;
-- table privileges revoked from PUBLIC/anon/authenticated;
-- only service_role gets ledger table privileges;
-- claim function execute revoked from PUBLIC/anon/authenticated and granted to service_role;
-- SECURITY DEFINER search path set to `public, pg_temp`;
-- ledger stores metadata/request hash/result reference only, never business payloads/message bodies.
-
-The migration has **not** been applied because no dedicated Nexus Control Plane project exists yet.
+Other security/performance advisor findings belong to the original Funnemail public schema. They are not modified during this Nexus extraction phase because original/source behavior is read-only under `RULES.md`.
 
 ## Conformance evidence system
 
-New API:
+API:
 
 `GET /api/funnemail/conformance`
 
-New admin page:
+Admin page:
 
 `/funnemail-conformance.html`
 
-The runner:
+The runner requires a verified Funnemail user session and compares boundary vs rollback compatibility read-only using hashes/counts/PASS-FAIL. It does not display/copy message bodies.
 
-- requires a verified Funnemail user session;
-- is read-only;
-- compares boundary vs rollback compatibility using the same user;
-- checks auth identity, first 50 message projections, dashboard, first 100 drafts, tasks and rules;
-- returns SHA256 hashes/counts/PASS-FAIL only;
-- does not display or copy message bodies.
-
-It cannot be executed by the agent without a real user Mail session and rollback-adapter configuration. A runtime green score must not be fabricated.
+Authenticated execution still requires a real browser Mail session; no green score is fabricated without that evidence.
 
 ## Migration gates
 
-`modules/migration/capabilityMap.js` now tracks the complete Funnemail capability surface instead of only the original six contracts.
+`modules/migration/capabilityMap.js` tracks the complete Funnemail capability surface.
 
-Current conservative readiness is **40/100** per tracked capability where only structural contract + rollback evidence exists:
+Current conservative readiness remains **40/100** where only structural contract + rollback evidence exists:
 
 - contract: 25/25;
 - shadow/conformance: 0/25 until runner evidence exists;
 - callers migrated: 0/20 until caller evidence is complete;
 - rollback: 15/15;
-- observability: 0/15 until runtime evidence is complete.
+- observability: 0/15 until per-capability runtime evidence is complete.
 
-Only 100/100 authorizes deprecation/removal.
+The durable-idempotency infrastructure blocker is closed, but that alone does not authorize legacy removal. Only 100/100 authorizes deprecation/removal.
 
 ## Resilience
 
@@ -159,39 +201,28 @@ Only 100/100 authorizes deprecation/removal.
 - default boundary timeout 12 seconds;
 - no silent runtime fallback to the legacy DB after target failure.
 
-## Dedicated Nexus Control Plane — required external confirmation
+## Verification
 
-Supabase inventory contains no project clearly dedicated to Nexus Control Plane.
+- Control Plane migrations applied successfully.
+- Ledger deterministic behavior verified directly against Supabase.
+- Direct privilege separation verified.
+- Latest idempotency client commit `988ae99ff8678f2e009c35dfa43fa632a46292fd` received Vercel Preview `success`.
+- Original applications/repositories remain untouched.
 
-Do not repurpose Funnemail, CRM, WCA or another unrelated database.
+## Remaining evidence/blockers for Funnemail cutover
 
-The user has been asked to confirm whether organization `jicausywrokuftbjatjy` should be used to create `nexus-control-plane`. Supabase tooling then requires a separate cost confirmation before project creation.
+1. Execute authenticated `/funnemail-conformance.html` and investigate any mismatch.
+2. Collect active-caller evidence before marking callers migrated.
+3. Run controlled side-effect conformance before legacy deletion.
+4. Per-capability observability evidence must be sufficient for migration gates.
 
-After confirmation:
-
-1. obtain project cost for that organization;
-2. present/confirm cost as required by the Supabase tool;
-3. create `nexus-control-plane` (preferred region `eu-central-1` unless changed);
-4. apply the hardened ledger migration;
-5. run Supabase security/performance advisors;
-6. verify claim/replay/conflict/in-progress behavior;
-7. configure `NEXUS_CONTROL_PLANE_URL` and server-only `NEXUS_CONTROL_PLANE_KEY`;
-8. only then consider `NEXUS_IDEMPOTENCY_MODE=enforce`.
-
-## Remaining evidence/blockers for this phase
-
-1. Dedicated Nexus Control Plane provisioning and secure server-side key configuration.
-2. Authenticated execution of `/funnemail-conformance.html` and review of any mismatches.
-3. Active-caller evidence before marking callers migrated.
-4. Controlled side-effect conformance before legacy deletion.
-5. Correct the single `email.rules.apply.v1` registry idempotency flag when GitHub connector permits the write.
-
-These are cutover/evidence blockers, not missing normal Mail routing functionality.
+These are evidence/cutover gates, not missing normal Mail functionality or missing Control Plane infrastructure.
 
 ## Next phase after Funnemail evidence closes
 
-- extend resilience/idempotency patterns to other cross-service clients;
+- extend the isolated Control Plane/resilience pattern to other cross-service clients;
 - simplify Cobra into an assistant/workflow orchestration layer;
+- add server-to-server Control Plane credentials only when needed for Cobra/workflow enforcement;
 - continue CRM/Navigator extraction with independent ownership boundaries;
 - keep TMWE2 last unless the owner changes migration order.
 
