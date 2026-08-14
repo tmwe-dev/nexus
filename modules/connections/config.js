@@ -20,6 +20,7 @@ function resolveConnectionConfig(connectionOrId) {
   const targetEndpoint = firstConfigured(connection.targetEndpointEnv, connection.targetEndpointEnvAliases || []);
   const targetToken = firstConfigured(connection.targetTokenEnv, connection.targetTokenEnvAliases || []);
   const internal = connection.internal === true;
+  const targetBase = (targetEndpoint.value || String(connection.targetDefaultBase || '').trim()).replace(/\/$/, '');
 
   return {
     id: connection.id,
@@ -29,11 +30,12 @@ function resolveConnectionConfig(connectionOrId) {
     endpoint_env: endpoint.env,
     token_env: token.env,
     configured: internal || Boolean(endpoint.value && (!connection.tokenEnv || token.value)),
-    target_base: targetEndpoint.value.replace(/\/$/, ''),
+    target_base: targetBase,
     target_token: targetToken.value,
-    target_endpoint_env: targetEndpoint.env,
+    target_endpoint_env: targetEndpoint.value ? targetEndpoint.env : null,
+    target_source: targetEndpoint.value ? 'environment' : (targetBase ? 'registry-default' : null),
     target_token_env: targetToken.env,
-    target_configured: Boolean(connection.targetEndpointEnv && targetEndpoint.value && (!connection.targetTokenEnv || targetToken.value))
+    target_configured: Boolean(targetBase && (!connection.targetTokenEnv || targetToken.value))
   };
 }
 
