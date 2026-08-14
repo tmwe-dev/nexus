@@ -37,6 +37,9 @@ Status meanings:
 |---|---|---|---|---|
 | Inbox/search | `GET /api/email/messages` | `funnemail-nexus-v1 /messages` when target configured; compatibility fallback otherwise | CANONICAL | prove configured target in deployed Nexus; keep fallback until gates pass |
 | Read message | `GET /api/email/message` | `funnemail-nexus-v1 /messages/:id` when target configured; compatibility fallback otherwise | CANONICAL | same as above |
+| Unread/draft counters | `GET /api/email/dashboard` | `funnemail-nexus-v1 /dashboard` when target configured; compatibility fallback otherwise | CANONICAL | verify live target configuration and conformance |
+| Mark read/unread | `POST /api/email/status` | `funnemail-nexus-v1 /status` when target configured; compatibility fallback otherwise | CANONICAL | verify DB + IMAP behavior against compatibility path before removing fallback |
+| Archive/trash/flag | `POST /api/email/status` | `funnemail-nexus-v1 /status` when target configured; compatibility fallback otherwise | CANONICAL | same conformance/rollback requirement |
 | Save draft | `POST /api/email/drafts` | idempotency ledger wrapper → `funnemail-nexus-v1 /drafts` when target configured | CANONICAL | activate durable ledger before enforce mode |
 | Send | `POST /api/email/send` | idempotency ledger wrapper → `funnemail-nexus-v1 /send` when target configured | CANONICAL | activate durable ledger before enforce mode |
 | Sync | `POST /api/email/sync` | idempotency ledger wrapper → `funnemail-nexus-v1 /sync` when target configured | CANONICAL | activate durable ledger before enforce mode |
@@ -48,9 +51,6 @@ The browser generates a new `Idempotency-Key` for each intentional Draft Create,
 
 | Visible action | Nexus API | Current execution | Status | Required next step |
 |---|---|---|---|---|
-| Unread/draft counters | `GET /api/email/dashboard` | direct Funnemail compatibility reads | COMPATIBILITY | replace with a Funnemail-owned summary capability or derive from canonical list endpoints |
-| Mark read/unread | `POST /api/email/status` | compatibility DB/IMAP operations | COMPATIBILITY | add stable message-status command contract |
-| Archive/trash/flag | `POST /api/email/status` | compatibility DB/IMAP operations | COMPATIBILITY | same stable status/move contract |
 | List drafts | `GET /api/email/drafts` | compatibility read from Funnemail draft storage | COMPATIBILITY | extend stable draft capability to list/read |
 | Approve/discard draft | `POST /api/email/draft-action` | compatibility Funnemail operation | COMPATIBILITY | define stable draft-action command if behavior remains Funnemail-owned |
 | AI writing assistance | `POST /api/email/compose` | existing Funnemail Edge function through compatibility adapter | COMPATIBILITY | determine final owner: Funnemail email intelligence vs shared AI platform |
@@ -84,8 +84,8 @@ The operator page is read-oriented even though the API also supports writes. No 
 ## Routing cleanup order
 
 1. Keep the simplified UI stable.
-2. Prove the configured Funnemail stable target for the six canonical capabilities.
-3. Add stable contracts for message status/move and draft list/action because they are part of normal mail behavior.
+2. Prove the configured Funnemail stable target for all boundary-preferred capabilities.
+3. Extend the boundary for draft list/action because drafts remain part of normal mail behavior.
 4. Decide final ownership for email tasks, AI compose, enrichment, sender intelligence and rules before adding more contracts.
 5. Continue CRM shadow/read-router migration without touching Navigator original files.
 6. Only after conformance/rollback gates pass, remove compatibility paths with zero active callers.
