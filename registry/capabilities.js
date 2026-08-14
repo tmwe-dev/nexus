@@ -15,6 +15,8 @@ const CAPABILITIES = Object.freeze([
 
   { name:'email.message.search.v1', owner:'funnemail', route:'/api/email/messages', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
   { name:'email.message.read.v1', owner:'funnemail', route:'/api/email/message', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
+  { name:'email.dashboard.v1', owner:'funnemail', route:'/api/email/dashboard', method:'GET', scope:'email:read', status:'compatibility', side_effects:false, idempotency_required:false },
+  { name:'email.message.status.v1', owner:'funnemail', route:'/api/email/status', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:false },
   { name:'email.draft.create.v1', owner:'funnemail', route:'/api/email/drafts', method:'POST', scope:'email:write', status:'compatibility', side_effects:true, idempotency_required:true },
   { name:'email.send.v1', owner:'funnemail', route:'/api/email/send', method:'POST', scope:'email:send', status:'compatibility', side_effects:true, idempotency_required:true },
   { name:'email.sync.v1', owner:'funnemail', route:'/api/email/sync', method:'POST', scope:'email:sync', status:'compatibility', side_effects:true, idempotency_required:true },
