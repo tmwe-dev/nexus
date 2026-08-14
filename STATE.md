@@ -8,14 +8,15 @@ Authoritative rules: `RULES.md`.
 
 Build TMWE Nexus to completion while keeping legacy/original systems read-only, copying/porting required logic into the new TMWE/Nexus infrastructure, simplifying the operator experience, and preserving working business behavior.
 
-The current immediate program is:
+Current program:
 
-1. simplify the operator UI;
-2. preserve functionality behind the simplified UI;
-3. verify canonical routing for each visible action;
-4. remove routing ambiguity and temporary coupling only after replacement paths pass migration gates;
-5. complete durable idempotency/control-plane requirements;
-6. integrate applications progressively, with TMWE2 last unless the owner changes the order.
+1. simplify operator UI;
+2. preserve required functionality behind the simplified UI;
+3. verify canonical routing for every visible action;
+4. migrate compatibility paths toward Nexus-owned boundaries without touching originals;
+5. remove temporary coupling only after migration gates pass;
+6. complete durable idempotency/control-plane requirements;
+7. integrate applications progressively, with TMWE2 last unless the owner changes the order.
 
 ## Repository / branch
 
@@ -24,7 +25,7 @@ The current immediate program is:
 - Draft PR: `#51`
 - Production branch: `main`
 - Production domain: `tmwe-nexus.vercel.app`
-- Working branch is deployed by the existing GitHub → Vercel Preview integration.
+- Working branch deploys automatically through GitHub → Vercel Preview.
 - Do not merge the complete working branch into production merely to inspect UI changes.
 
 ## Rules now persisted
@@ -41,9 +42,7 @@ The current immediate program is:
 - complexity belongs in the backend, not in the normal operator UI;
 - production changes must remain deliberate and reversible.
 
-## UI simplification completed in this work cycle
-
-The following operator pages have been simplified on the working branch without changing original source systems:
+## UI simplification completed
 
 ### Home — `public/index.html`
 
@@ -55,70 +54,109 @@ The following operator pages have been simplified on the working branch without 
 
 ### Mail — `public/funnemail.html`
 
-- removed capability/runtime/service-boundary terminology from the normal workflow;
+- capability/runtime/service-boundary terminology removed from normal workflow;
 - primary navigation: Scrivi, Inbox, Bozze;
-- secondary features moved under `Altro`: Mittenti, Task, Regole, Sincronizza;
+- secondary features under `Altro`: Mittenti, Task, Regole, Sincronizza;
 - preserved search, message reading, read/unread, archive, trash, flag, task creation, classification, AI compose, draft management, senders, tasks, rules, sync and enrichment;
-- browser now sends a fresh `Idempotency-Key` for each intentional Send, Draft Create and Sync action;
-- the same key is preserved if the API helper retries after session refresh because retry reuses the original request options.
+- browser sends a fresh `Idempotency-Key` for each intentional Send, Draft Create and Sync action;
+- retry after session refresh preserves the original request options and therefore the same key.
 
 ### CRM — `public/crm.html`
 
-- removed health/storage/read-mode diagnostics from operator view;
-- primary tabs are Contatti, Aziende, Opportunità;
-- search remains available;
-- contact links continue to open contact detail;
-- opportunity/pipeline view remains available.
+- health/storage/read-mode diagnostics removed from operator view;
+- primary tabs: Contatti, Aziende, Opportunità;
+- search and contact detail links preserved;
+- pipeline/opportunity view preserved.
 
 ### Contact — `public/contact.html`
 
-- removed raw normalized payload and identity/provenance diagnostics from operator view;
-- shows useful contact profile fields and direct email/phone actions;
-- attempts to load recent activities through the existing CRM activities API.
+- raw normalized payload and identity/provenance diagnostics removed;
+- useful profile fields plus direct email/phone actions;
+- recent activities loaded through existing CRM activities API when available.
 
 ### Companies — `public/companies.html`
 
-- renamed/reframed as a simple Aziende search;
-- removed registry/infrastructure terminology from the operator view.
+- reframed as simple Aziende search;
+- registry/infrastructure terminology removed.
+
+## Vercel verification
+
+- Simplified UI commit `11a94736f3138e2fc8644ceb4dadf850062e9350` built successfully on Vercel Preview.
+- Durable-state commit also built successfully.
+- Preview is protected and cannot be opened by the current Vercel connector identity, but Vercel CI status is `success`.
 
 ## Funnemail integration state
 
-- Funnemail remains an independent source system.
-- Funnemail service boundary source repo: `tmwe-dev/funnemail`.
+- Funnemail remains an independent source system and must now be treated as read-only.
+- Original/source repository: `tmwe-dev/funnemail`.
+- Canonical Nexus-owned boundary source: `services/funnemail-boundary/index.ts`.
+- Deployment notes: `services/funnemail-boundary/README.md`.
 - Boundary function: `funnemail-nexus-v1`.
-- Supabase project: Funnemail project `rxocvyfhsqduowltmfbp`.
-- The boundary has already been deployed ACTIVE in Supabase.
-- Auth model for the six stable user-scoped capabilities is delegated Funnemail user JWT; no shared Nexus service secret is needed for those six paths.
-- Nexus branch service client is aligned to that delegated-user-token model.
-- Legacy/direct Supabase compatibility paths still exist and must not be removed until conformance/rollback gates pass.
+- Supabase project: `rxocvyfhsqduowltmfbp`.
+- Boundary was redeployed from the Nexus-owned copy and is now Supabase Edge Function version `2`, status `ACTIVE`, `verify_jwt=false` with custom delegated-user authentication inside the function.
+- Auth model for stable user-scoped capabilities: delegated Funnemail user JWT; no shared Nexus service secret.
+- Nexus service client is aligned to delegated-user-token model.
+- Legacy/direct Supabase compatibility paths remain and must not be removed until conformance/rollback gates pass.
+
+## Operator route map
+
+Canonical route inventory is persisted in `docs/OPERATOR_ROUTE_MAP.md`.
+
+Current Funnemail split:
+
+### Stable boundary available
+
+- message search/read;
+- draft create;
+- send;
+- sync;
+- classify.
+
+### Still compatibility/legacy-backed
+
+- dashboard counters;
+- message status mutations (read/unread/archive/trash/flag);
+- task board/create/update/delete;
+- rules;
+- sender intelligence;
+- AI compose;
+- enrichment;
+- login/refresh/user helpers still use compatibility auth adapter.
+
+These paths must be migrated progressively; do not delete them prematurely.
+
+## CRM state
+
+- Operator UI is simplified.
+- CRM contact search still reads through `navigator-read-adapter+identity-resolver`.
+- Contact read has a routing layer capable of Nexus independent store/shadow mode.
+- Original Navigator data remains source of truth until migration gates authorize cutover.
 
 ## Remaining technical blockers / debt
 
 1. Dedicated Nexus Control Plane persistence has not yet been identified/created.
-2. `control-plane/migrations/202608130001_create_idempotency_ledger.sql` exists but has not yet been applied to a dedicated Nexus Control Plane database.
+2. `control-plane/migrations/202608130001_create_idempotency_ledger.sql` exists but is not applied to a dedicated Nexus Control Plane database.
 3. `NEXUS_CONTROL_PLANE_URL/KEY` are therefore not live.
-4. Idempotency must remain fail-safe/audit-compatible until the durable ledger is live and verified.
-5. Funnemail source documentation/PR must be reconciled with the actually deployed delegated-user-JWT boundary to avoid source/deploy drift.
-6. Funnemail draft PR remains unmerged even though the Edge boundary is deployed; reconcile before declaring source/deploy parity.
-7. Circuit-breaker implementation exists but still needs to be wired through common cross-service paths.
-8. Cobra still contains compatibility/orchestration debt and must be simplified after the current operator-path/routing pass.
-9. Agent framework remains incomplete/skeletal.
-10. Working branch contains a large backend delta from `main`; production merge requires a deliberate release decision, not an incidental UI publish.
+4. Idempotency must remain audit/fail-safe compatible until durable ledger is live and verified.
+5. Existing Funnemail source PR/branch is historical compatibility work; future boundary changes must occur in Nexus-owned `services/funnemail-boundary/`, not in the original repo.
+6. Circuit-breaker implementation exists but still needs wiring through common cross-service paths.
+7. Cobra contains compatibility/orchestration debt and must be simplified after the current routing migration pass.
+8. Agent framework remains incomplete/skeletal.
+9. Working branch contains a large backend delta from `main`; production merge requires a deliberate release decision.
+10. Preview visual inspection is blocked by current Vercel connector identity even though builds succeed.
 
 ## Next autonomous actions
 
 When work resumes, do not ask for authorization to continue. Execute in this order unless the owner changes the objective:
 
-1. verify the latest Vercel Preview build for the UI changes;
-2. inspect Home, Mail, CRM, Contact and Aziende for runtime/JS failures;
-3. fix any preview failures without touching originals;
-4. map every visible operator action to its canonical Nexus route/service owner;
-5. remove or hide any remaining technical-only UI from normal workflows;
-6. close Funnemail source/deploy documentation drift;
-7. establish dedicated Nexus Control Plane persistence and apply the idempotency ledger migration;
-8. switch idempotency to enforced mode only after durable storage and browser behavior are verified;
-9. wire graceful degradation/circuit breaking into canonical service paths;
-10. continue application-by-application integration, with TMWE2 last.
+1. migrate the remaining visible Funnemail operator actions from compatibility adapter to the Nexus-owned Funnemail boundary, starting with message status + dashboard because they are used by Inbox;
+2. preserve fallback only while required by migration gates;
+3. extend conformance evidence for each migrated route;
+4. establish dedicated Nexus Control Plane persistence and apply the idempotency ledger migration when project/organization creation can be performed safely;
+5. switch idempotency to enforced mode only after durable storage and browser behavior are verified;
+6. wire graceful degradation/circuit breaking into canonical service paths;
+7. simplify Cobra and route it as an assistant rather than a technical app;
+8. continue application-by-application integration, with TMWE2 last.
 
 ## Production protection
 
