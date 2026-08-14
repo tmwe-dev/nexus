@@ -1,7 +1,42 @@
 'use strict';
-const {probe,tokenFrom,user}=require('../../modules/funnemail/legacyAdapter');
+
+const { probe, tokenFrom } = require('../../modules/funnemail/legacyAdapter');
+const service = require('../../modules/funnemail/serviceClient');
+const { boundaryUser } = require('../../modules/funnemail/accessGuard');
+const { capabilitiesForOwner } = require('../../registry/capabilities');
+const idempotency = require('../../modules/idempotency/ledger');
+
 module.exports=async function handler(req,res){
- if(req.method!=='GET')return res.status(405).json({error:'Method Not Allowed'});res.setHeader('Cache-Control','no-store');
- const runtime=await probe();let authenticated=false,currentUser=null;if(tokenFrom(req)){try{currentUser=await user(req);authenticated=true}catch{}}
- return res.status(200).json({contract:'funnemail.integration-status.v1',integration:'complete',adapter:'supabase-rest-edge',runtime,authenticated,user:currentUser,capabilities:{integrated:17,total:17},originals_modified:false});
+ if(req.method!=='GET')return res.status(405).json({error:'Method Not Allowed'});
+ res.setHeader('Cache-Control','no-store');
+ const [runtime,target,idempotencyProbe]=await Promise.all([probe(),service.probe(),idempotency.probe()]);
+ const idempotencyReadiness=idempotency.readiness();
+ let authenticated=false,currentUser=null;
+ if(tokenFrom(req)){try{currentUser=await boundaryUser(req);authenticated=Boolean(currentUser?.id)}catch{}}
+ const capabilities=capabilitiesForOwner('funnemail');
+ const idempotentCapabilities=capabilities.filter(item=>item.idempotency_required);
+ const blockers=[];
+ if(!target.reachable)blockers.push('stable_funnemail_service_boundary');
+ if(idempotentCapabilities.length&&!idempotencyReadiness.user_durable_store_configured){
+  blockers.push(...idempotentCapabilities.map(item=>`idempotency_store:${item.name}`));
+ }
+ if(!target.reachable){
+  if(!runtime.configured)blockers.push('compatibility_runtime_configuration');
+  else if(!runtime.reachable)blockers.push('compatibility_runtime_reachability');
+ }
+ return res.status(200).json({
+  contract:'funnemail.integration-status.v6',
+  integration:target.reachable?'service-boundary-live':runtime.reachable?'compatibility-live':'not-ready',
+  production_ready:false,
+  active_adapter:target.reachable?'funnemail-service-boundary':'supabase-rest-edge-compatibility',
+  runtime,
+  target_service_boundary:target,
+  authenticated,
+  user:currentUser,
+  auth:{service_to_service:true,user_token_bridge:true,enforce_compatible:true,service_token_in_browser:false,user_validation:'canonical-boundary'},
+  idempotency:{...idempotencyProbe,readiness:idempotencyReadiness},
+  capabilities:{published:capabilities.length,implemented:capabilities.filter(item=>item.route).length,production_ready:0},
+  blockers:Array.from(new Set(blockers)),
+  originals_modified:false
+ });
 };

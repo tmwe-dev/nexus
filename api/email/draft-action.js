@@ -1,12 +1,17 @@
 'use strict';
-const { requireScope }=require('../../modules/security/apiGuard');
+const { requireEmailAccess }=require('../../modules/funnemail/accessGuard');
 const { SCOPES }=require('../../modules/security/scopes');
 const { rest,edge }=require('../../modules/funnemail/legacyAdapter');
+const service=require('../../modules/funnemail/serviceClient');
 module.exports=async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({error:'Method Not Allowed'});
- const guard=requireScope(req,res,SCOPES.EMAIL_WRITE);if(!guard.ok)return;
+ const guard=await requireEmailAccess(req,res,SCOPES.EMAIL_WRITE);if(!guard.ok)return;
  const b=req.body||{},id=String(b.id||b.draft_id||'').trim(),action=String(b.action||'').toLowerCase();if(!id||!action)return res.status(400).json({error:'DRAFT_ID_AND_ACTION_REQUIRED'});
  try{
+  if(service.configured()&&action!=='send'){
+   const data=await service.request(req,`/drafts/${encodeURIComponent(id)}/action`,{method:'POST',body:b});
+   return res.status(200).json({...data,source:'funnemail-service-boundary'});
+  }
   let patch={};
   if(action==='approve')patch={status:'approvata'};
   else if(action==='discard')patch={status:'scartata'};
@@ -19,6 +24,6 @@ module.exports=async function handler(req,res){
    return res.status(200).json({contract:'email.draft.action.v2',action:'send',source:'funnemail-send-direct',data:send});
   } else return res.status(400).json({error:'UNSUPPORTED_DRAFT_ACTION'});
   const data=await rest(req,`/email_drafts?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:patch});
-  return res.status(200).json({contract:'email.draft.action.v2',action,data:Array.isArray(data)?data[0]:data});
+  return res.status(200).json({contract:'email.draft.action.v2',action,source:'funnemail-compatibility-adapter',data:Array.isArray(data)?data[0]:data});
  }catch(error){return res.status(error.status||502).json({error:'FUNNEMAIL_DRAFT_ACTION_UNAVAILABLE',message:error.message,detail:error.detail||null});}
 };

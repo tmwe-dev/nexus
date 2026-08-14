@@ -1,43 +1,46 @@
+'use strict';
+
+const { capabilityNamesForOwner } = require('./capabilities');
+
 const CONNECTIONS = [
   {
     id: 'wca', name: 'WCA App', kind: 'data-source', status: 'configured', mode: 'read', sourceOfTruth: true,
-    repository: 'tmweapp/wca-app', endpointEnv: 'WCA_BASE_URL', tokenEnv: 'WCA_SERVICE_TOKEN',
-    capabilities: ['partner.search.v1','partner.read.v1','contact.search.v1','contact.read.v1','business-card.search.v1','business-card.read.v1']
+    repository: 'tmweapp/wca-app', endpointEnv: 'WCA_BASE_URL', tokenEnv: 'WCA_SERVICE_TOKEN'
   },
   {
     id: 'report-aziende', name: 'Report Aziende', kind: 'data-source', status: 'contract-pending-source-review', mode: 'read', sourceOfTruth: true,
-    endpointEnv: 'REPORT_AZIENDE_BASE_URL', tokenEnv: 'REPORT_AZIENDE_SERVICE_TOKEN', capabilities: []
+    endpointEnv: 'REPORT_AZIENDE_BASE_URL', tokenEnv: 'REPORT_AZIENDE_SERVICE_TOKEN'
   },
   {
-    id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false,
-    capabilities: ['identity.company.resolve.v1','identity.company.read.v1','identity.contact.resolve.v1','identity.contact.read.v1']
+    id: 'identity', name: 'Nexus Identity', kind: 'federation-index', status: 'contract-design', mode: 'read-write-metadata-only', sourceOfTruth: false, internal: true
   },
   {
-    id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'source-mapped-contract-design', mode: 'read-write',
-    repository: 'tmwe-dev/funnemail', endpointEnv: 'FUNNEMAIL_BASE_URL', tokenEnv: 'FUNNEMAIL_SERVICE_TOKEN',
-    capabilities: ['email.message.search.v1','email.message.read.v1','email.draft.create.v1','email.send.v1','email.sync.v1','email.classify.v1']
+    id: 'funnemail', name: 'Funnemail', kind: 'application', status: 'stable-boundary-deployed', mode: 'read-write',
+    repository: 'tmwe-dev/funnemail',
+    endpointEnv: 'NEXUS_FUNNEMAIL_SUPABASE_URL', tokenEnv: 'NEXUS_FUNNEMAIL_ANON_KEY',
+    targetEndpointEnv: 'FUNNEMAIL_BASE_URL',
+    targetDefaultBase: 'https://rxocvyfhsqduowltmfbp.supabase.co/functions/v1/funnemail-nexus-v1',
+    targetAuthMode: 'delegated-user-jwt', targetHealthPath: '/health'
   },
   {
     id: 'bartalk', name: 'BarTalk / Voice Translator', kind: 'application', status: 'source-mapped-contract-design', mode: 'session',
     repository: 'tmwe-dev/voice-translator2', endpointEnv: 'BARTALK_BASE_URL', tokenEnv: 'BARTALK_SERVICE_TOKEN',
-    capabilities: ['communication.health.v1','communication.session.read.v1','communication.message.exchange.v1','translation.text.v1','translation.voice.v1','taxitalk.destination-handoff.v1']
+    endpointEnvAliases: ['NEXUS_BARTALK_URL'], tokenEnvAliases: ['NEXUS_BARTALK_TOKEN']
   },
   {
     id: 'cobra', name: 'COBRA', kind: 'service', status: 'connector-ready-compatibility-mode', mode: 'orchestrate',
-    repository: 'tmwe-dev/COBRA', endpointEnv: 'COBRA_BASE_URL', tokenEnv: 'COBRA_SERVICE_TOKEN',
-    capabilities: ['workflow.execute.v1','web.research.v1','browser.execute.v1']
+    repository: 'tmwe-dev/COBRA', endpointEnv: 'COBRA_BASE_URL', tokenEnv: 'COBRA_SERVICE_TOKEN'
   },
-  { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned-extraction', mode: 'read-write', capabilities: [] },
+  { id: 'ai-platform', name: 'AI Platform', kind: 'service', status: 'planned-extraction', mode: 'read-write' },
   {
     id: 'crm', name: 'CRM', kind: 'application', status: 'contacts-read-extraction-active', mode: 'independent-read-adapter', sourceOfTruth: false,
-    repository: 'tmwe-dev/nexus',
-    endpointEnv: 'NAVIGATOR_SUPABASE_URL',
-    tokenEnv: 'NAVIGATOR_SUPABASE_KEY',
-    capabilities: ['crm.contact.search.v1','crm.contact.read.v1','crm.pipeline.search.v1','crm.activity.search.v1']
+    repository: 'tmwe-dev/nexus', endpointEnv: 'NEXUS_CRM_STORE_URL', tokenEnv: 'NEXUS_CRM_STORE_TOKEN'
   },
-  { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator', capabilities: [] },
-  { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none', capabilities: [] }
-];
+  { id:'sales-intelligence', name:'Sales Intelligence', kind:'service', status:'active-internal', mode:'read', internal:true },
+  { id:'marketing', name:'Marketing Planner', kind:'service', status:'active-internal', mode:'plan', internal:true },
+  { id: 'navigator', name: 'Navigator', kind: 'application', status: 'migration-source', mode: 'consumer', repository: 'tmwe-dev/wca-network-navigator' },
+  { id: 'tmwe2', name: 'TMWE2', kind: 'application', status: 'excluded-until-final-phase', mode: 'none' }
+].map(connection => Object.freeze({ ...connection, capabilities: capabilityNamesForOwner(connection.id) }));
 
 function publicConnection(connection) {
   return {
@@ -47,7 +50,6 @@ function publicConnection(connection) {
     status: connection.status,
     mode: connection.mode,
     source_of_truth: Boolean(connection.sourceOfTruth),
-    configured: Boolean(connection.endpointEnv && process.env[connection.endpointEnv]),
     capabilities: connection.capabilities
   };
 }

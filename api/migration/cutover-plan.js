@@ -1,3 +1,5 @@
+'use strict';
+
 const { planCutover } = require('../../modules/migration/cutoverPlanner');
 const { hydrateEvidence } = require('../../modules/migration/evidenceRegistry');
 const { requireScope } = require('../../modules/security/apiGuard');
@@ -11,6 +13,6 @@ module.exports = async function handler(req, res) {
   if (!capability) return res.status(400).json({ error: 'capability is required' });
   let hydration = { durable: false, loaded: 0 };
   try { hydration = await hydrateEvidence(capability); } catch (error) { hydration = { durable: false, loaded: 0, error: error.message }; }
-  const plan = planCutover(capability);
+  const plan = await planCutover(capability);
   return res.status(plan.executable ? 200 : 409).json({ ...plan, hydration });
 };

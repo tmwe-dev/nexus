@@ -4,6 +4,7 @@ const SCOPES = Object.freeze({
   WCA_READ: 'wca:read',
   RESEARCH_EXECUTE: 'research:execute',
   AI_EXECUTE: 'ai:execute',
+  SALES_READ: 'sales:read',
   MARKETING_PLAN: 'marketing:plan',
   EMAIL_READ: 'email:read',
   EMAIL_WRITE: 'email:write',

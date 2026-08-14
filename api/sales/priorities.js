@@ -1,7 +1,13 @@
+'use strict';
+
 const { getSalesPriorities } = require('../../modules/sales-intelligence/service');
+const { requireScope } = require('../../modules/security/apiGuard');
+const { SCOPES } = require('../../modules/security/scopes');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const guard = requireScope(req, res, SCOPES.SALES_READ);
+  if (!guard.ok) return;
   try {
     const payload = await getSalesPriorities({
       search: req.query.search,

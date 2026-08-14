@@ -1,49 +1,102 @@
 # Funnemail Capability Map
 
-Repository reviewed: `tmwe-dev/funnemail`.
+`RULES.md` is authoritative.
 
-## Proven current implementation
+Original/source repository: `tmwe-dev/funnemail` — **read-only** unless the owner explicitly orders a change to that original.
 
-The source review confirms a Supabase-backed mail application with active message state, drafts, mailbox configuration, IMAP sync and email-domain AI. The current control map identifies active Edge functions including:
+Canonical Nexus-owned integration source: `services/funnemail-boundary/index.ts`.
+
+## Proven source behavior
+
+Source review confirms a Supabase-backed mail application with message state, drafts, mailbox configuration, IMAP sync, sending, email-domain AI, rules, tasks and sender intelligence.
+
+Relevant existing Funnemail Edge functions include:
 
 - `funnemail-send-direct`
 - `funnemail-compose`
 - `funnemail-classify`
 - `funnemail-imap-sync`
 - `funnemail-imap-move`
-- `funnemail-imap-flags-sync`
 - `funnemail-imap-mark-seen`
 - `funnemail-imap-mark-flag`
-- `funnemail-generate-drafts`
+- `funnemail-apply-rules`
+- `funnemail-enrich-inbox`
+- `funnemail-reclassify-now`
+- `funnemail-reclassify-batch`
 
-## Nexus target capabilities
+These original functions remain unchanged. The Nexus-owned boundary delegates to them where that is the safest way to preserve source semantics.
 
-```text
-email.message.search.v1
-email.message.read.v1
-email.draft.create.v1
-email.send.v1
-email.sync.v1
-email.classify.v1
-```
+## Deployed Nexus boundary
 
-These names are Nexus contracts, not aliases for direct database access.
+- Function: `funnemail-nexus-v1`
+- Supabase project: `rxocvyfhsqduowltmfbp`
+- Current verified deployment: version `6`, status `ACTIVE`
+- Auth: delegated Funnemail user JWT validated by the boundary
+- `verify_jwt=false` is intentional because the function performs explicit auth validation itself
+
+## Boundary-preferred Nexus capabilities
+
+### Authentication
+
+- `funnemail.auth.login.v1`
+- `funnemail.auth.refresh.v1`
+- `funnemail.auth.user.v1`
+
+### Mail core
+
+- `email.message.search.v1`
+- `email.message.read.v1`
+- `email.dashboard.v1`
+- `email.message.status.v1`
+- `email.draft.list.v1`
+- `email.draft.create.v1`
+- `email.draft.action.v2` for safe actions
+- `email.send.v1`
+- `email.sync.v1`
+- `email.classify.v1`
+
+### Secondary Mail functions
+
+- `email.tasks.v2`
+- `email.task.create.v2`
+- `email.senders.v1`
+- `email.rules.v1`
+- `email.rules.apply.v1`
+- `email.compose.v2`
+- `email.sender-intel.v1`
+- `email.enrich.v1`
+
+## Residual compatibility
+
+The simplified UI still has one visible action that prefers compatibility routing:
+
+- `email.reclassify.v1` → existing `funnemail-reclassify-now` / `funnemail-reclassify-batch`.
+
+Additional compatibility remains outside the primary simplified UI for task PATCH/DELETE, draft-action send, diagnostics and rollback fallbacks.
+
+Do not remove any of these until migration gates pass.
 
 ## Ownership
 
 Funnemail remains owner of:
+
 - mailbox/message state;
 - email drafts;
 - mailbox sync;
-- email sending;
-- email-specific classification/rules.
+- sending;
+- email-specific classification/reclassification;
+- email rules;
+- email tasks where they are derived from mailbox workflow;
+- sender intelligence specific to mail.
 
-Nexus does not become the mailbox database.
+Nexus owns the stable integration boundary, routing contracts, orchestration policy and migration controls. Nexus does **not** become the mailbox database.
 
-## Extraction boundary
+## Target configuration
 
-Generic model routing, shared agent infrastructure, generic memory and cost/usage tracking should not be copied out blindly. They move to shared services only after every Funnemail caller has been mapped and a stable replacement contract exists.
+`registry/connections.js` defines the public non-secret boundary URL once as `targetDefaultBase`. `FUNNEMAIL_BASE_URL` is only an optional override.
 
-## Next implementation step
+Direct Supabase compatibility configuration is rollback-only, not the preferred operator route.
 
-Create a narrow Funnemail service boundary around proven functions, preferably under `/api/nexus/v1/*` or equivalent Supabase Edge endpoints, then place Nexus adapters in front of those endpoints. Do not expose the full Supabase schema to Nexus consumers.
+## Current migration rule
+
+Boundary-preferred routing does not mean the legacy path may be deleted. Each capability still requires contract conformance, runtime evidence, caller migration, rollback and observability before deprecation reaches 100/100.
