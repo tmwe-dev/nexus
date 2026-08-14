@@ -14,19 +14,53 @@ Future integration source is held in `services/funnemail-boundary/` inside Nexus
 
 ### Stable boundary deployment
 
-PASS for deployment existence.
+PASS.
 
-Supabase directly reports function `funnemail-nexus-v1`, deployed version `6`, status `ACTIVE`, with explicit boundary-side user validation.
+Supabase reports `funnemail-nexus-v1`, deployed version `6`, status `ACTIVE`, with explicit boundary-side user validation.
 
 ### Nexus routing
 
 PASS structurally for every normal simplified Mail operator action listed in `docs/OPERATOR_ROUTE_MAP.md`.
 
-The Funnemail target has a canonical public registry default. `email.reclassify.v1` was repaired: Nexus no longer references the missing `funnemail-reclassify-now` function and no longer routes delegated users into the service-role-only batch selector. Exact requested IDs are classified through the canonical `/classify` boundary.
+The Funnemail target has a canonical public registry default. `email.reclassify.v1` was repaired: Nexus no longer references missing `funnemail-reclassify-now` and no longer routes delegated users into the service-role-only batch selector. Exact requested IDs are classified through canonical `/classify`.
 
-### Idempotency intent and wrappers
+### Durable idempotency infrastructure
 
-PASS structurally, but durable enforcement remains blocked until the Control Plane exists.
+PASS for the Funnemail user-scoped path.
+
+The user chose to reuse the existing Supabase project without creating a second paid project. Nexus storage is isolated in the dedicated schema:
+
+`nexus_control_plane`
+
+The ledger table is:
+
+`nexus_control_plane.idempotency_ledger`
+
+Direct access is denied to `anon` and `authenticated`. User-scoped RPCs derive actor identity from `auth.uid()` and cannot operate on another user's actor key.
+
+Verified privilege model:
+
+- anon schema usage: false;
+- authenticated schema usage: false;
+- anon table select: false;
+- authenticated table select: false;
+- anon user claim execution: false;
+- authenticated user claim execution: true;
+- authenticated service claim execution: false.
+
+The service-role RPC path was tested directly against Supabase and passed:
+
+1. first claim → `execute`;
+2. duplicate while pending → `in_progress`;
+3. completion → `true`;
+4. same key/hash after completion → `replay`;
+5. same key/different hash → `conflict`.
+
+The test ledger record was deleted after verification.
+
+### Mail idempotency path
+
+PASS structurally with durable storage available.
 
 The Mail browser sends an `Idempotency-Key` for intentional:
 
@@ -37,36 +71,24 @@ The Mail browser sends an `Idempotency-Key` for intentional:
 - Classify;
 - Enrichment.
 
-The corresponding Nexus APIs use the durable-ledger wrapper where required. `email.reclassify.v1` is also ledger-wrapped for API callers. Rule application is ledger-wrapped in the API even though it is not exposed as a normal operator action.
+The corresponding Nexus APIs use the ledger wrapper where required. `email.reclassify.v1` and `email.rules.apply.v1` are also ledger-wrapped.
 
-An authentication-refresh retry preserves the original request options and therefore the same idempotency key.
+For `funnemail-user` requests, `modules/idempotency/ledger.js` calls authenticated user-scoped RPCs using the delegated Funnemail JWT. No service-role credential is required for normal Mail idempotency.
 
-### Durable idempotency
+An authentication-refresh retry preserves the same idempotency key.
 
-BLOCKED / NOT PASS.
-
-The control-plane migration exists and was hardened before deployment:
-
-- table access is explicitly revoked from `PUBLIC`, `anon` and `authenticated`;
-- only `service_role` receives ledger table privileges;
-- the claim function is executable only by `service_role`;
-- the SECURITY DEFINER function uses an explicit `public, pg_temp` search path;
-- the ledger stores metadata/hash/result references, never message bodies/business payloads.
-
-No dedicated Nexus Control Plane project has yet been explicitly provisioned. Do not switch enforce mode on until the store and server-side credentials are live and verified.
+`NEXUS_IDEMPOTENCY_MODE` remains `audit` by default. Requests carrying a key already use durable storage in audit mode; broad `enforce` remains deferred until service-to-service actors such as Cobra also have a configured durable path.
 
 ### Authenticated read-only conformance runner
 
-IMPLEMENTED, execution pending a valid browser Mail session plus rollback-adapter configuration.
+IMPLEMENTED; execution still requires a valid browser Mail session plus rollback-adapter configuration.
 
 - API: `GET /api/funnemail/conformance`
 - Admin page: `/funnemail-conformance.html`
-- requires a verified Funnemail user session;
-- performs read-only comparisons only;
-- compares auth identity, first 50 messages using a stable projection, dashboard, drafts, tasks and rules;
-- returns hashes/counts/PASS-FAIL, not message bodies/content.
-
-This creates a repeatable evidence mechanism without mutating original data.
+- verified Funnemail user session required;
+- read-only comparisons only;
+- auth identity, first 50 message projections, dashboard, drafts, tasks and rules;
+- outputs hashes/counts/PASS-FAIL only, not message bodies.
 
 ### Runtime authenticated comparison
 
@@ -90,11 +112,18 @@ Compatibility adapters remain in Nexus. Runtime target errors do not silently fa
 
 PARTIAL.
 
-- Vercel Git integration validates branch builds;
-- Supabase reports the boundary deployment ACTIVE;
+- Vercel validates branch builds;
+- Supabase reports the Funnemail boundary ACTIVE;
+- Control Plane claim/replay/conflict behavior is verified;
 - Funnemail service client exposes circuit-breaker state;
-- conformance now has a repeatable read-only runner;
-- durable control-plane observability remains blocked until provisioning.
+- conformance has a repeatable read-only runner;
+- per-capability runtime/caller evidence is still incomplete.
+
+## Supabase advisors
+
+The only advisor item specific to the new Nexus schema is `RLS enabled no policy` on the ledger table. This is intentional: direct schema/table privileges are revoked and access is only through restricted SECURITY DEFINER RPCs.
+
+Other security/performance findings belong to the original Funnemail public schema and are not modified during this Nexus extraction phase under `RULES.md`.
 
 ## Migration-gate scoring
 
@@ -108,7 +137,7 @@ The intentionally conservative current score remains **40/100** until real runti
 - rollback ready: 15/15;
 - observability ready: 0/15 until per-capability/runtime evidence is complete.
 
-Only 100/100 authorizes legacy removal.
+Durable idempotency is no longer a blocker for the Funnemail user path, but migration score is not increased by infrastructure existence alone. Only 100/100 authorizes legacy removal.
 
 ## Capability checkpoint
 
@@ -119,25 +148,27 @@ Only 100/100 authorizes legacy removal.
 | Dashboard | PASS | PASS | RUNNER READY | NO |
 | Message status | PASS | PASS | NOT PROVED | NO |
 | Draft list | PASS | PASS | RUNNER READY | NO |
-| Draft create/safe action | PASS | PASS | NOT PROVED | NO |
-| Send | PASS | PASS | durable store blocked | NO |
-| Sync | PASS | PASS | durable store blocked | NO |
-| Classify/Reclassify | PASS | PASS | durable store + mutation evidence blocked | NO |
+| Draft create/safe action | PASS | PASS | MUTATION EVIDENCE PENDING | NO |
+| Send | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
+| Sync | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
+| Classify/Reclassify | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
 | Tasks list | PASS | PASS | RUNNER READY | NO |
-| Task create | PASS | PASS | durable store + mutation evidence blocked | NO |
+| Task create | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
 | Senders | PASS | PASS | structural only | NO |
 | Rules list | PASS | PASS | RUNNER READY | NO |
-| Rule apply | PASS | PASS | mutation evidence blocked | NO |
+| Rule apply | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
 | Compose | PASS | PASS | structural only | NO |
-| Enrichment | PASS | PASS | durable store + mutation evidence blocked | NO |
+| Enrichment | PASS | PASS | durable idempotency READY; mutation evidence pending | NO |
 
 ## Current conclusion
 
-The **routing/extraction and idempotency-preparation portion of the Funnemail phase is complete**. Normal Mail actions prefer the Nexus-owned boundary, reclassification routing is fixed, retry-sensitive writes are ledger-ready, and a read-only conformance runner now exists.
+The **routing/extraction and durable-idempotency infrastructure portion of the Funnemail phase is complete**. Normal Mail actions prefer the Nexus-owned boundary, reclassification routing is fixed, retry-sensitive writes have a durable user-scoped ledger path, and a read-only conformance runner exists.
 
-Two external evidence blocks still prevent legacy deletion/production cutover:
+Remaining cutover blockers are evidence-only:
 
-1. authenticated execution of conformance and active-caller evidence;
-2. provisioning/configuration of the dedicated Nexus Control Plane for durable idempotency.
+1. authenticated execution of the read-only conformance runner;
+2. active-caller evidence;
+3. controlled side-effect conformance;
+4. sufficient per-capability observability evidence.
 
 Neither blocker is bypassed or hidden to manufacture a 100/100 score.
